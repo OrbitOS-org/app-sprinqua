@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"fmt"
+	"sort"
 	"net/http"
 	"strconv"
 	"time"
@@ -452,11 +453,18 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 		}
 	}
 
-	// Weekly chart: 7 day rows, stacked bars per day.
-	chart := make([]chartDay, 7)
-	for i := range chart {
-		chart[i].HeightPx = 20 // min height (just the background strip)
+	// Weekly chart: collect raw bars per day, then pack into lanes.
+	type rawBar struct {
+		name     string
+		color    string
+		startMin int
+		endMin   int
+		leftPct  float64
+		widthPct float64
+		dispTime string
+		durMins  int
 	}
+	dayRaw := [7][]rawBar{}
 	legendSeen := make(map[int]bool)
 	var legend []legendEntry
 
@@ -479,35 +487,65 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 		}
 		color := zoneColor[sc.ZoneID]
 		name := zmap[sc.ZoneID].Name
-
 		if !legendSeen[sc.ZoneID] {
 			legendSeen[sc.ZoneID] = true
-			legend = append(legend, legendEntry{Name: name, Color: color})
 		}
-
-		displayStart := formatStartTime(sc.StartTime, use12h)
+		rb := rawBar{
+			name:     name,
+			color:    color,
+			startMin: startMin,
+			endMin:   startMin + sc.DurMins,
+			leftPct:  leftPct,
+			widthPct: widthPct,
+			dispTime: formatStartTime(sc.StartTime, use12h),
+			durMins:  sc.DurMins,
+		}
 		for _, d := range sc.Days {
-			if d < 0 || d > 6 {
-				continue
-			}
-			topPx := len(chart[d].Bars) * 22
-			chart[d].Bars = append(chart[d].Bars, chartBar{
-				Label:     name,
-				Color:     color,
-				LeftPct:   fmt.Sprintf("%.2f", leftPct),
-				WidthPct:  fmt.Sprintf("%.2f", widthPct),
-				TopPx:     topPx,
-				StartTime: displayStart,
-				DurMins:   sc.DurMins,
-			})
-			if h := len(chart[d].Bars)*22 + 4; h > chart[d].HeightPx {
-				chart[d].HeightPx = h
+			if d >= 0 && d <= 6 {
+				dayRaw[d] = append(dayRaw[d], rb)
 			}
 		}
 	}
 
-	// Re-order legend to match zone list order.
-	legend = legend[:0]
+	// Lane packing: sort by start time, fit non-overlapping bars onto the same row.
+	chart := make([]chartDay, 7)
+	for d := range chart {
+		bars := dayRaw[d]
+		sort.Slice(bars, func(i, j int) bool { return bars[i].startMin < bars[j].startMin })
+
+		laneEnds := []int{} // endMin of the last bar in each lane
+		for _, rb := range bars {
+			lane := -1
+			for i, end := range laneEnds {
+				if rb.startMin >= end {
+					lane = i
+					break
+				}
+			}
+			if lane == -1 {
+				lane = len(laneEnds)
+				laneEnds = append(laneEnds, 0)
+			}
+			laneEnds[lane] = rb.endMin
+			chart[d].Bars = append(chart[d].Bars, chartBar{
+				Label:     rb.name,
+				Color:     rb.color,
+				LeftPct:   fmt.Sprintf("%.2f", rb.leftPct),
+				WidthPct:  fmt.Sprintf("%.2f", rb.widthPct),
+				TopPx:     lane * 22,
+				StartTime: rb.dispTime,
+				DurMins:   rb.durMins,
+			})
+		}
+		numLanes := len(laneEnds)
+		if numLanes == 0 {
+			chart[d].HeightPx = 20
+		} else {
+			chart[d].HeightPx = numLanes*22 + 4
+		}
+	}
+
+	// Build legend ordered by zone list.
 	for _, z := range s.cfg.Zones {
 		if legendSeen[z.ID] {
 			legend = append(legend, legendEntry{Name: zmap[z.ID].Name, Color: zoneColor[z.ID]})
