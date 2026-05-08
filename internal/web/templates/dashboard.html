@@ -52,7 +52,7 @@
   <script>
     document.body.addEventListener('htmx:afterSettle', function() {
       const el = document.getElementById('last-update');
-      if (el) el.textContent = new Date().toLocaleTimeString('{{.Lang}}', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+      if (el) el.textContent = new Date().toLocaleTimeString('{{.Lang}}', {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12: {{if eq .TimeFormat "12h"}}true{{else}}false{{end}}});
     });
   </script>
 

@@ -41,10 +41,11 @@ var funcMap = template.FuncMap{
 	},
 }
 
-// basePage is embedded in every template data struct to provide S (strings) and Lang.
+// basePage is embedded in every template data struct to provide S (strings), Lang, and TimeFormat.
 type basePage struct {
-	S    map[string]string
-	Lang string
+	S          map[string]string
+	Lang       string
+	TimeFormat string // "24h" | "12h"
 }
 
 // Server holds all dependencies for the HTTP layer.
@@ -148,7 +149,11 @@ func (s *Server) lang(r *http.Request) string {
 // page builds a basePage for the detected language.
 func (s *Server) page(r *http.Request) basePage {
 	l := s.lang(r)
-	return basePage{S: i18n.Strings(l), Lang: l}
+	tf := s.cfg.TimeFormat
+	if tf == "" {
+		tf = "24h"
+	}
+	return basePage{S: i18n.Strings(l), Lang: l, TimeFormat: tf}
 }
 
 // setLangCookie writes the language preference cookie.
