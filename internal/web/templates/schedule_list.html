@@ -76,15 +76,15 @@
       {{end}}
     </div>
 
-    <!-- Time ruler: mirrors day-row layout (w-6 spacer + flex-1 bar area) -->
+    <!-- Time ruler (adaptive range, mirrors day-row layout) -->
     <div class="flex items-center gap-1.5 mb-1">
       <span class="w-6 flex-shrink-0"></span>
       <div class="flex-1 relative h-4">
-        <span class="absolute left-0 text-[10px] text-slate-400">0h</span>
-        <span class="absolute left-1/4 text-[10px] text-slate-400 -translate-x-1/2">6h</span>
-        <span class="absolute left-1/2 text-[10px] text-slate-400 -translate-x-1/2">12h</span>
-        <span class="absolute left-3/4 text-[10px] text-slate-400 -translate-x-1/2">18h</span>
-        <span class="absolute right-0 text-[10px] text-slate-400">24h</span>
+        <span class="absolute left-0 text-[10px] text-slate-400">{{index .Ruler 0}}</span>
+        <span class="absolute left-1/4 text-[10px] text-slate-400 -translate-x-1/2">{{index .Ruler 1}}</span>
+        <span class="absolute left-1/2 text-[10px] text-slate-400 -translate-x-1/2">{{index .Ruler 2}}</span>
+        <span class="absolute left-3/4 text-[10px] text-slate-400 -translate-x-1/2">{{index .Ruler 3}}</span>
+        <span class="absolute right-0 text-[10px] text-slate-400">{{index .Ruler 4}}</span>
       </div>
     </div>
 

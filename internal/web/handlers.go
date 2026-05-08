@@ -405,6 +405,7 @@ type schedulePageData struct {
 	Schedules  []scheduleView
 	Chart      []chartDay
 	ZoneLegend []legendEntry
+	Ruler      [5]string // time labels at 0%, 25%, 50%, 75%, 100% of chart range
 }
 
 type scheduleView struct {
@@ -453,18 +454,13 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 		}
 	}
 
-	// Weekly chart: collect raw bars per day, then pack into lanes.
-	// minBarPct is the minimum rendered width (% of 24h) so short schedules
-	// are always visible. Lane packing uses VISUAL positions so bars never
-	// overlap on screen even when the minimum width expands them past where
-	// the next schedule begins.
-	const minBarPct = 1.5 // ≈ 21 min visual minimum; ~5px on a 350px container
-
+	// ── Weekly chart ─────────────────────────────────────────────────────────
+	// Step 1: collect raw bars and find the time range of all enabled schedules.
 	type rawBar struct {
 		name     string
 		color    string
-		leftPct  float64 // start position on 0–100% axis
-		rawWidth float64 // actual duration as % (before min applied)
+		startMin int
+		endMin   int
 		dispTime string
 		durMins  int
 	}
@@ -472,6 +468,7 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 	legendSeen := make(map[int]bool)
 	var legend []legendEntry
 
+	cStart, cEnd := 1440, 0
 	for _, sc := range s.cfg.Schedules {
 		if !sc.Enabled || sc.DurMins <= 0 {
 			continue
@@ -480,19 +477,22 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 		if err != nil {
 			continue
 		}
-		startMin := t.Hour()*60 + t.Minute()
-		leftPct := float64(startMin) / (24 * 60) * 100
-		rawWidth := float64(sc.DurMins) / (24 * 60) * 100
+		sm := t.Hour()*60 + t.Minute()
+		em := sm + sc.DurMins
+		if sm < cStart {
+			cStart = sm
+		}
+		if em > cEnd {
+			cEnd = em
+		}
 		color := zoneColor[sc.ZoneID]
 		name := zmap[sc.ZoneID].Name
 		if !legendSeen[sc.ZoneID] {
 			legendSeen[sc.ZoneID] = true
 		}
 		rb := rawBar{
-			name:     name,
-			color:    color,
-			leftPct:  leftPct,
-			rawWidth: rawWidth,
+			name: name, color: color,
+			startMin: sm, endMin: em,
 			dispTime: formatStartTime(sc.StartTime, use12h),
 			durMins:  sc.DurMins,
 		}
@@ -503,47 +503,91 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 		}
 	}
 
-	// Lane packing using visual end positions to prevent on-screen overlap.
+	// Step 2: adaptive chart range — zoom to where schedules actually are,
+	// with a 30-minute buffer and a 60-minute minimum span.
+	if cStart > cEnd {
+		cStart, cEnd = 0, 1440 // no enabled schedules, fall back to full day
+	} else {
+		cStart -= 30
+		if cStart < 0 {
+			cStart = 0
+		}
+		cEnd += 30
+		if cEnd > 1440 {
+			cEnd = 1440
+		}
+		if cEnd-cStart < 60 { // ensure minimum visible range
+			mid := (cStart + cEnd) / 2
+			cStart, cEnd = mid-30, mid+30
+			if cStart < 0 {
+				cStart, cEnd = 0, 60
+			}
+			if cEnd > 1440 {
+				cStart, cEnd = 1380, 1440
+			}
+		}
+	}
+	cRange := cEnd - cStart
+
+	// Step 3: build 5 ruler labels evenly across the adaptive range.
+	var ruler [5]string
+	for i := range ruler {
+		m := cStart + cRange*i/4
+		if m > 1440 {
+			m = 1440
+		}
+		h, mn := m/60, m%60
+		if use12h {
+			tt, _ := time.Parse("15:04", fmt.Sprintf("%02d:%02d", h, mn))
+			ruler[i] = tt.Format("3:04PM")
+		} else {
+			ruler[i] = fmt.Sprintf("%d:%02d", h, mn)
+		}
+	}
+
+	// Step 4: lane packing per day using temporal positions.
+	// With adaptive zoom bars are wide enough that temporal packing is correct.
+	const minBarPct = 1.0
 	chart := make([]chartDay, 7)
 	for d := range chart {
 		bars := dayRaw[d]
-		sort.Slice(bars, func(i, j int) bool { return bars[i].leftPct < bars[j].leftPct })
+		sort.Slice(bars, func(i, j int) bool { return bars[i].startMin < bars[j].startMin })
 
-		laneVisualEnds := []float64{} // visual right edge (%) of last bar in each lane
+		laneEnds := []int{}
 		for _, rb := range bars {
-			w := rb.rawWidth
+			leftPct := float64(rb.startMin-cStart) / float64(cRange) * 100
+			w := float64(rb.durMins) / float64(cRange) * 100
 			if w < minBarPct {
 				w = minBarPct
 			}
-			if rb.leftPct+w > 100 {
-				w = 100 - rb.leftPct
+			if leftPct+w > 100 {
+				w = 100 - leftPct
 			}
-			visualEnd := rb.leftPct + w
 
 			lane := -1
-			for i, end := range laneVisualEnds {
-				if rb.leftPct >= end {
+			for i, end := range laneEnds {
+				if rb.startMin >= end {
 					lane = i
 					break
 				}
 			}
 			if lane == -1 {
-				lane = len(laneVisualEnds)
-				laneVisualEnds = append(laneVisualEnds, 0)
+				lane = len(laneEnds)
+				laneEnds = append(laneEnds, 0)
 			}
-			laneVisualEnds[lane] = visualEnd
+			laneEnds[lane] = rb.endMin
 
 			chart[d].Bars = append(chart[d].Bars, chartBar{
 				Label:     rb.name,
 				Color:     rb.color,
-				LeftPct:   fmt.Sprintf("%.2f", rb.leftPct),
+				LeftPct:   fmt.Sprintf("%.2f", leftPct),
 				WidthPct:  fmt.Sprintf("%.2f", w),
 				TopPx:     lane * 22,
 				StartTime: rb.dispTime,
 				DurMins:   rb.durMins,
 			})
 		}
-		if n := len(laneVisualEnds); n == 0 {
+		if n := len(laneEnds); n == 0 {
 			chart[d].HeightPx = 20
 		} else {
 			chart[d].HeightPx = n*22 + 4
@@ -562,6 +606,7 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 		Schedules:  views,
 		Chart:      chart,
 		ZoneLegend: legend,
+		Ruler:      ruler,
 	}
 }
 
