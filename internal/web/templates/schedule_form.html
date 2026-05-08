@@ -45,7 +45,14 @@
 
         <!-- Days -->
         <div class="mb-4">
-          <label class="block text-xs font-medium text-slate-500 mb-2">{{.S.sched_form_days}}</label>
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-xs font-medium text-slate-500">{{.S.sched_form_days}}</label>
+            {{if .DaysError}}
+            <span id="days-error" class="text-xs font-medium text-red-500">{{.S.sched_days_error}}</span>
+            {{else}}
+            <span id="days-error" class="text-xs font-medium text-red-500 hidden"></span>
+            {{end}}
+          </div>
 
           <!-- Quick-select shortcuts -->
           <div class="flex gap-2 mb-3">
@@ -136,7 +143,26 @@
       document.querySelectorAll('input[name="days"]').forEach(cb => {
         cb.checked = days.includes(parseInt(cb.value));
       });
+      document.getElementById('days-error').classList.add('hidden');
     }
+
+    document.querySelector('form').addEventListener('submit', function(e) {
+      const checked = document.querySelectorAll('input[name="days"]:checked').length;
+      if (checked === 0) {
+        e.preventDefault();
+        const err = document.getElementById('days-error');
+        err.classList.remove('hidden');
+        err.closest('.mb-4').scrollIntoView({behavior: 'smooth', block: 'center'});
+      }
+    });
+
+    document.querySelectorAll('input[name="days"]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        if (document.querySelectorAll('input[name="days"]:checked').length > 0) {
+          document.getElementById('days-error').classList.add('hidden');
+        }
+      });
+    });
   </script>
 
 </body>

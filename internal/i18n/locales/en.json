@@ -61,6 +61,8 @@
   "sched_btn_edit": "Edit",
   "sched_btn_delete": "Delete",
   "sched_confirm_delete": "Delete this program?",
+  "sched_days_error": "Select at least one day.",
+  "sched_chart_title": "Weekly overview",
 
   "sched_form_new": "New program",
   "sched_form_edit": "Edit program",

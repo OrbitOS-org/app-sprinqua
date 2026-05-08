@@ -61,6 +61,8 @@
   "sched_btn_edit": "Editar",
   "sched_btn_delete": "Apagar",
   "sched_confirm_delete": "Apagar este programa?",
+  "sched_days_error": "Seleciona pelo menos um dia.",
+  "sched_chart_title": "Vista semanal",
 
   "sched_form_new": "Novo programa",
   "sched_form_edit": "Editar programa",

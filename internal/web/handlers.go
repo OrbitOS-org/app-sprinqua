@@ -356,9 +356,40 @@ func (s *Server) zonePrecheck(w http.ResponseWriter, r *http.Request) (int, *zon
 
 // ── Schedule ──────────────────────────────────────────────────────────────────
 
+var zoneColors = []string{
+	"#10b981", // emerald
+	"#3b82f6", // blue
+	"#8b5cf6", // violet
+	"#f59e0b", // amber
+	"#f43f5e", // rose
+	"#0ea5e9", // sky
+	"#f97316", // orange
+	"#14b8a6", // teal
+}
+
+type legendEntry struct {
+	Name  string
+	Color string
+}
+
+type chartBar struct {
+	Label    string
+	Color    string
+	LeftPct  string
+	WidthPct string
+	TopPx    int
+}
+
+type chartDay struct {
+	Bars     []chartBar
+	HeightPx int
+}
+
 type schedulePageData struct {
 	basePage
-	Schedules []scheduleView
+	Schedules  []scheduleView
+	Chart      []chartDay
+	ZoneLegend []legendEntry
 }
 
 type scheduleView struct {
@@ -370,15 +401,24 @@ type scheduleView struct {
 
 type scheduleFormData struct {
 	basePage
-	Schedule config.Schedule
-	Zones    []config.Zone
-	IsNew    bool
+	Schedule  config.Schedule
+	Zones     []config.Zone
+	IsNew     bool
+	DaysError bool
 }
 
 func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 	zmap := s.cfg.ZoneMap()
 	pg := s.page(r)
 	use12h := s.cfg.TimeFormat == "12h"
+
+	// Stable color per zone (ordered by zone list).
+	zoneColor := make(map[int]string, len(s.cfg.Zones))
+	for i, z := range s.cfg.Zones {
+		zoneColor[z.ID] = zoneColors[i%len(zoneColors)]
+	}
+
+	// Schedule card views.
 	views := make([]scheduleView, len(s.cfg.Schedules))
 	for i, sc := range s.cfg.Schedules {
 		next := scheduler.NextRunFor(sc)
@@ -397,7 +437,72 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 			DisplayTime: formatStartTime(sc.StartTime, use12h),
 		}
 	}
-	return schedulePageData{basePage: pg, Schedules: views}
+
+	// Weekly chart: 7 day rows, stacked bars per day.
+	chart := make([]chartDay, 7)
+	for i := range chart {
+		chart[i].HeightPx = 20 // min height (just the background strip)
+	}
+	legendSeen := make(map[int]bool)
+	var legend []legendEntry
+
+	for _, sc := range s.cfg.Schedules {
+		if !sc.Enabled || sc.DurMins <= 0 {
+			continue
+		}
+		t, err := time.Parse("15:04", sc.StartTime)
+		if err != nil {
+			continue
+		}
+		startMin := t.Hour()*60 + t.Minute()
+		leftPct := float64(startMin) / (24 * 60) * 100
+		widthPct := float64(sc.DurMins) / (24 * 60) * 100
+		if widthPct < 0.7 {
+			widthPct = 0.7
+		}
+		if leftPct+widthPct > 100 {
+			widthPct = 100 - leftPct
+		}
+		color := zoneColor[sc.ZoneID]
+		name := zmap[sc.ZoneID].Name
+
+		if !legendSeen[sc.ZoneID] {
+			legendSeen[sc.ZoneID] = true
+			legend = append(legend, legendEntry{Name: name, Color: color})
+		}
+
+		for _, d := range sc.Days {
+			if d < 0 || d > 6 {
+				continue
+			}
+			topPx := len(chart[d].Bars) * 22
+			chart[d].Bars = append(chart[d].Bars, chartBar{
+				Label:    name,
+				Color:    color,
+				LeftPct:  fmt.Sprintf("%.2f", leftPct),
+				WidthPct: fmt.Sprintf("%.2f", widthPct),
+				TopPx:    topPx,
+			})
+			if h := len(chart[d].Bars)*22 + 4; h > chart[d].HeightPx {
+				chart[d].HeightPx = h
+			}
+		}
+	}
+
+	// Re-order legend to match zone list order.
+	legend = legend[:0]
+	for _, z := range s.cfg.Zones {
+		if legendSeen[z.ID] {
+			legend = append(legend, legendEntry{Name: zmap[z.ID].Name, Color: zoneColor[z.ID]})
+		}
+	}
+
+	return schedulePageData{
+		basePage:   pg,
+		Schedules:  views,
+		Chart:      chart,
+		ZoneLegend: legend,
+	}
 }
 
 // formatStartTime converts a stored "HH:MM" string to display format.
@@ -418,10 +523,11 @@ func (s *Server) handleSchedule(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleScheduleNew(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "schedule_form", scheduleFormData{
-		basePage: s.page(r),
-		Schedule: config.Schedule{Enabled: true, StartTime: "08:00"},
-		Zones:    s.cfg.Zones,
-		IsNew:    true,
+		basePage:  s.page(r),
+		Schedule:  config.Schedule{Enabled: true, StartTime: "08:00"},
+		Zones:     s.cfg.Zones,
+		IsNew:     true,
+		DaysError: r.URL.Query().Get("err") == "days",
 	})
 }
 
@@ -434,10 +540,11 @@ func (s *Server) handleScheduleEdit(w http.ResponseWriter, r *http.Request) {
 	for _, sc := range s.cfg.Schedules {
 		if sc.ID == id {
 			s.render(w, "schedule_form", scheduleFormData{
-				basePage: s.page(r),
-				Schedule: sc,
-				Zones:    s.cfg.Zones,
-				IsNew:    false,
+				basePage:  s.page(r),
+				Schedule:  sc,
+				Zones:     s.cfg.Zones,
+				IsNew:     false,
+				DaysError: r.URL.Query().Get("err") == "days",
 			})
 			return
 		}
@@ -447,6 +554,10 @@ func (s *Server) handleScheduleEdit(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleScheduleCreate(w http.ResponseWriter, r *http.Request) {
 	sc := s.parseScheduleForm(r)
+	if len(sc.Days) == 0 {
+		http.Redirect(w, r, "/schedule/new?err=days", http.StatusFound)
+		return
+	}
 	sc.ID = s.cfg.NextScheduleID()
 	s.cfg.Schedules = append(s.cfg.Schedules, sc)
 	if err := s.cfg.Save(s.dataDir); err != nil {
@@ -462,6 +573,10 @@ func (s *Server) handleScheduleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sc := s.parseScheduleForm(r)
+	if len(sc.Days) == 0 {
+		http.Redirect(w, r, fmt.Sprintf("/schedule/%d/edit?err=days", id), http.StatusFound)
+		return
+	}
 	sc.ID = id
 	for i, existing := range s.cfg.Schedules {
 		if existing.ID == id {
