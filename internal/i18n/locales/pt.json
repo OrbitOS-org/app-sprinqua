@@ -25,8 +25,9 @@
   "step3_btn_test": "▶ 3s",
   "test_activated": "✓ Relé CH%d ativado por 3s",
 
-  "step4_title": "Home Assistant / MQTT",
+  "step4_title": "Preferências & MQTT",
   "step4_subtitle": "Opcional. Integra com o teu broker MQTT para controlo via Home Assistant.",
+  "step4_time_label": "Formato de hora",
   "step4_toggle_label": "Ativar MQTT",
   "step4_toggle_desc": "Expõe as zonas como switches no Home Assistant",
   "step4_broker": "Broker (IP ou hostname)",

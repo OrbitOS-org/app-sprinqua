@@ -29,6 +29,31 @@
 
   <form hx-post="/setup/step/4" hx-target="#wizard-content" hx-swap="innerHTML">
 
+    <!-- Clock format -->
+    <div class="mb-5">
+      <label class="block text-xs font-medium text-slate-500 mb-2">{{.S.step4_time_label}}</label>
+      <div class="flex gap-2">
+        <label class="cursor-pointer flex-1">
+          <input type="radio" name="time_format" value="24h" class="sr-only peer"
+            {{if ne .TimeFormat "12h"}}checked{{end}}>
+          <div class="flex items-center justify-center h-11 rounded-xl border-2 text-sm font-semibold transition-colors
+            border-slate-200 text-slate-500
+            peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-checked:text-emerald-700">
+            24h&nbsp;<span class="text-xs font-normal opacity-60">14:30</span>
+          </div>
+        </label>
+        <label class="cursor-pointer flex-1">
+          <input type="radio" name="time_format" value="12h" class="sr-only peer"
+            {{if eq .TimeFormat "12h"}}checked{{end}}>
+          <div class="flex items-center justify-center h-11 rounded-xl border-2 text-sm font-semibold transition-colors
+            border-slate-200 text-slate-500
+            peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-checked:text-emerald-700">
+            12h&nbsp;<span class="text-xs font-normal opacity-60">2:30 PM</span>
+          </div>
+        </label>
+      </div>
+    </div>
+
     <div class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-4 bg-slate-50 mb-4">
       <div class="pr-4">
         <p class="text-sm font-medium text-slate-700">{{.S.step4_toggle_label}}</p>

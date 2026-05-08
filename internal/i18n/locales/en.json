@@ -25,8 +25,9 @@
   "step3_btn_test": "▶ 3s",
   "test_activated": "✓ Relay CH%d active for 3s",
 
-  "step4_title": "Home Assistant / MQTT",
+  "step4_title": "Preferences & MQTT",
   "step4_subtitle": "Optional. Connect to your MQTT broker for Home Assistant integration.",
+  "step4_time_label": "Clock format",
   "step4_toggle_label": "Enable MQTT",
   "step4_toggle_desc": "Exposes zones as switches in Home Assistant",
   "step4_broker": "Broker (IP or hostname)",

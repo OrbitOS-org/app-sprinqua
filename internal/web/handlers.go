@@ -63,7 +63,8 @@ type step3Data struct {
 
 type step4Data struct {
 	basePage
-	MQTT config.MQTTConfig
+	MQTT       config.MQTTConfig
+	TimeFormat string
 }
 
 func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
@@ -206,9 +207,14 @@ func (s *Server) handleSetupTest(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleSetupStep3(w http.ResponseWriter, r *http.Request) {
+	tf := s.cfg.TimeFormat
+	if tf == "" {
+		tf = "24h"
+	}
 	s.render(w, "step4", step4Data{
-		basePage: s.page(r),
-		MQTT:     config.MQTTConfig{Port: 1883, Prefix: "sprinkl"},
+		basePage:   s.page(r),
+		MQTT:       config.MQTTConfig{Port: 1883, Prefix: "sprinkl"},
+		TimeFormat: tf,
 	})
 }
 
@@ -236,6 +242,12 @@ func (s *Server) handleSetupStep4(w http.ResponseWriter, r *http.Request) {
 			Prefix:   prefix,
 		}
 	}
+
+	tf := r.FormValue("time_format")
+	if tf != "12h" {
+		tf = "24h"
+	}
+	s.cfg.TimeFormat = tf
 
 	s.cfg.SetupDone = true
 	if err := s.cfg.Save(s.dataDir); err != nil {
@@ -617,37 +629,6 @@ func (s *Server) handleScheduleDelete(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf(logTag, "save schedule: %v", err)
 	}
 	s.render(w, "schedule_list", s.buildSchedulePage(r))
-}
-
-// ── Settings ──────────────────────────────────────────────────────────────────
-
-type settingsData struct {
-	basePage
-	TimeFormat string
-}
-
-func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
-	tf := s.cfg.TimeFormat
-	if tf == "" {
-		tf = "24h"
-	}
-	s.render(w, "settings", settingsData{basePage: s.page(r), TimeFormat: tf})
-}
-
-func (s *Server) handleSettingsSave(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "bad form", http.StatusBadRequest)
-		return
-	}
-	tf := r.FormValue("time_format")
-	if tf != "12h" {
-		tf = "24h"
-	}
-	s.cfg.TimeFormat = tf
-	if err := s.cfg.Save(s.dataDir); err != nil {
-		logger.Errorf(logTag, "save settings: %v", err)
-	}
-	http.Redirect(w, r, "/settings", http.StatusFound)
 }
 
 func (s *Server) parseScheduleForm(r *http.Request) config.Schedule {
