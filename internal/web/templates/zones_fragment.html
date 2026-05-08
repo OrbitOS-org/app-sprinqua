@@ -15,33 +15,36 @@
   </div>
   {{end}}
 
-  {{range .Zones}}
+  {{range $i, $z := .Zones}}
   <div class="bg-white rounded-2xl border-2 transition-all duration-300
-    {{if .Active}}border-emerald-400 shadow-sm shadow-emerald-100{{else}}border-slate-200{{end}}
+    {{if $z.Active}}border-emerald-400 shadow-sm shadow-emerald-100{{else}}border-slate-200{{end}}
     p-4 sm:p-5">
 
     <div class="flex items-start justify-between mb-4 gap-2">
       <div class="min-w-0">
         <div class="flex items-center gap-2">
-          <div class="w-2.5 h-2.5 rounded-full flex-shrink-0 mt-0.5
-            {{if .Active}}bg-emerald-500{{else}}bg-slate-300{{end}}"></div>
-          <h3 class="font-semibold text-slate-800 truncate">{{.Name}}</h3>
+          <div class="w-3 h-3 rounded-full flex-shrink-0 mt-0.5 transition-all"
+               style="background-color: {{zoneColor $i}}; {{if $z.Active}}box-shadow: 0 0 0 3px rgba(16,185,129,0.25);{{end}}"></div>
+          <h3 class="font-semibold text-slate-800 truncate">{{$z.Name}}</h3>
         </div>
-        <p class="text-xs text-slate-400 mt-1 ml-4">CH{{.Channel}} · {{.TypeIcon}} {{.Type}}</p>
+        <p class="text-xs text-slate-400 mt-1 ml-5">
+          <span class="font-mono font-semibold" style="color: {{zoneColor $i}}">CH{{$z.Channel}}</span>
+          · {{$z.TypeIcon}} {{$z.Type}}
+        </p>
       </div>
       <span class="flex-shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full
-        {{if .Active}}text-emerald-700 bg-emerald-50{{else}}text-slate-400 bg-slate-50{{end}}">
-        {{if .Active}}{{$.S.zone_active}}{{else}}{{$.S.zone_inactive}}{{end}}
+        {{if $z.Active}}text-emerald-700 bg-emerald-50{{else}}text-slate-400 bg-slate-50{{end}}">
+        {{if $z.Active}}{{$.S.zone_active}}{{else}}{{$.S.zone_inactive}}{{end}}
       </span>
     </div>
 
-    {{if .Active}}
+    {{if $z.Active}}
     <div class="flex items-center justify-between mb-3">
-      <span class="text-emerald-600 text-sm font-mono font-semibold">⏱ {{.FormatActive}}</span>
-      <span class="text-xs text-slate-400">{{printf $.S.zone_max_fmt (divInt .MaxSecs 60)}}</span>
+      <span class="text-emerald-600 text-sm font-mono font-semibold">⏱ {{$z.FormatActive}}</span>
+      <span class="text-xs text-slate-400">{{printf $.S.zone_max_fmt (divInt $z.MaxSecs 60)}}</span>
     </div>
     <button
-      hx-post="/api/zones/{{.ID}}/off"
+      hx-post="/api/zones/{{$z.ID}}/off"
       hx-swap="none"
       class="w-full py-3 px-4 rounded-xl border-2 border-red-200 text-red-600 text-sm font-semibold
              hover:bg-red-50 active:bg-red-100 transition-colors">
@@ -51,18 +54,18 @@
     {{else}}
     <div class="grid grid-cols-2 gap-2">
       <button
-        hx-post="/api/zones/{{.ID}}/on"
+        hx-post="/api/zones/{{$z.ID}}/on"
         hx-swap="none"
-        class="py-3 px-4 rounded-xl bg-emerald-600 text-white text-sm font-semibold
-               hover:bg-emerald-700 active:bg-emerald-800 transition-colors">
+        class="py-3 px-4 rounded-xl text-white text-sm font-semibold transition-colors"
+        style="background-color: {{zoneColor $i}}">
         {{$.S.zone_btn_on}}
       </button>
       <button
-        hx-post="/api/zones/{{.ID}}/pulse"
+        hx-post="/api/zones/{{$z.ID}}/pulse"
         hx-vals='{"secs":"300"}'
         hx-swap="none"
-        class="py-3 px-4 rounded-xl border-2 border-amber-300 text-amber-700 text-sm font-semibold
-               hover:bg-amber-50 active:bg-amber-100 transition-colors">
+        class="py-3 px-4 rounded-xl border-2 text-sm font-semibold transition-colors"
+        style="border-color: {{zoneColor $i}}; color: {{zoneColor $i}}">
         {{$.S.zone_btn_pulse}}
       </button>
     </div>

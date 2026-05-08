@@ -412,7 +412,8 @@ type scheduleView struct {
 	config.Schedule
 	ZoneName    string
 	NextRun     string
-	DisplayTime string // StartTime formatted per TimeFormat
+	DisplayTime string
+	Color       string // persistent hex color matching the zone
 }
 
 type scheduleFormData struct {
@@ -451,6 +452,7 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 			ZoneName:    zmap[sc.ZoneID].Name,
 			NextRun:     nextStr,
 			DisplayTime: formatStartTime(sc.StartTime, use12h),
+			Color:       zoneColor[sc.ZoneID],
 		}
 	}
 

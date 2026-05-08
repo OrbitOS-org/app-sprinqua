@@ -32,29 +32,30 @@
   <form hx-post="/setup/step/2" hx-target="#wizard-content" hx-swap="innerHTML">
 
     <div class="space-y-3 mb-5">
-      {{range .Zones}}
+      {{range $i, $z := .Zones}}
       <div class="rounded-xl border border-slate-200 p-4 bg-slate-50">
         <div class="flex items-center gap-2 mb-3">
-          <span class="text-xs font-mono font-semibold text-slate-600 bg-slate-200 px-2 py-0.5 rounded-md">CH{{.Channel}}</span>
+          <span class="text-xs font-mono font-semibold text-white px-2 py-0.5 rounded-md"
+                style="background-color: {{zoneColor $i}}">CH{{$z.Channel}}</span>
         </div>
         <div class="mb-2">
           <label class="block text-xs font-medium text-slate-500 mb-1">{{$.S.step2_zone_name}}</label>
-          <input type="text" name="zone_{{.ID}}_name" value="{{.Name}}"
+          <input type="text" name="zone_{{$z.ID}}_name" value="{{$z.Name}}"
             class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-xs font-medium text-slate-500 mb-1">{{$.S.step2_zone_type}}</label>
-            <select name="zone_{{.ID}}_type"
+            <select name="zone_{{$z.ID}}_type"
               class="w-full rounded-xl border border-slate-300 px-3 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none">
-              <option value="drip"{{if eq .Type "drip"}} selected{{end}}>{{$.S.type_drip}}</option>
-              <option value="sprinkler"{{if eq .Type "sprinkler"}} selected{{end}}>{{$.S.type_sprinkler}}</option>
-              <option value="mist"{{if eq .Type "mist"}} selected{{end}}>{{$.S.type_mist}}</option>
+              <option value="drip"{{if eq $z.Type "drip"}} selected{{end}}>{{$.S.type_drip}}</option>
+              <option value="sprinkler"{{if eq $z.Type "sprinkler"}} selected{{end}}>{{$.S.type_sprinkler}}</option>
+              <option value="mist"{{if eq $z.Type "mist"}} selected{{end}}>{{$.S.type_mist}}</option>
             </select>
           </div>
           <div>
             <label class="block text-xs font-medium text-slate-500 mb-1">{{$.S.step2_zone_max}}</label>
-            <input type="number" name="zone_{{.ID}}_max" value="{{divInt .MaxSecs 60}}" min="1" max="240"
+            <input type="number" name="zone_{{$z.ID}}_max" value="{{divInt $z.MaxSecs 60}}" min="1" max="240"
               inputmode="numeric"
               class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
           </div>

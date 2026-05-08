@@ -39,6 +39,10 @@ var funcMap = template.FuncMap{
 		}
 		return false
 	},
+	// zoneColor returns the persistent hex color for a zone by its index in the zones slice.
+	"zoneColor": func(idx int) string {
+		return zoneColors[idx%len(zoneColors)]
+	},
 }
 
 // basePage is embedded in every template data struct to provide S (strings), Lang, and TimeFormat.
