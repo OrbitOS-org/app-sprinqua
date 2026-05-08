@@ -385,11 +385,13 @@ type legendEntry struct {
 }
 
 type chartBar struct {
-	Label    string
-	Color    string
-	LeftPct  string
-	WidthPct string
-	TopPx    int
+	Label     string
+	Color     string
+	LeftPct   string
+	WidthPct  string
+	TopPx     int
+	StartTime string
+	DurMins   int
 }
 
 type chartDay struct {
@@ -483,17 +485,20 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 			legend = append(legend, legendEntry{Name: name, Color: color})
 		}
 
+		displayStart := formatStartTime(sc.StartTime, use12h)
 		for _, d := range sc.Days {
 			if d < 0 || d > 6 {
 				continue
 			}
 			topPx := len(chart[d].Bars) * 22
 			chart[d].Bars = append(chart[d].Bars, chartBar{
-				Label:    name,
-				Color:    color,
-				LeftPct:  fmt.Sprintf("%.2f", leftPct),
-				WidthPct: fmt.Sprintf("%.2f", widthPct),
-				TopPx:    topPx,
+				Label:     name,
+				Color:     color,
+				LeftPct:   fmt.Sprintf("%.2f", leftPct),
+				WidthPct:  fmt.Sprintf("%.2f", widthPct),
+				TopPx:     topPx,
+				StartTime: displayStart,
+				DurMins:   sc.DurMins,
 			})
 			if h := len(chart[d].Bars)*22 + 4; h > chart[d].HeightPx {
 				chart[d].HeightPx = h

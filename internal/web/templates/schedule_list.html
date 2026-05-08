@@ -106,7 +106,7 @@
         {{range $day.Bars}}
         <div class="absolute rounded text-[9px] font-semibold text-white flex items-center px-1.5 overflow-hidden"
              style="left: {{.LeftPct}}%; width: {{.WidthPct}}%; top: {{.TopPx}}px; height: 18px; background-color: {{.Color}};"
-             title="{{.Label}}">
+             title="{{.Label}} · {{.StartTime}} · {{.DurMins}}min">
           <span class="truncate leading-none">{{.Label}}</span>
         </div>
         {{end}}
