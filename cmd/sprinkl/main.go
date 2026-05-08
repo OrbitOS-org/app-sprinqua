@@ -10,6 +10,7 @@ import (
 	"github.com/OrbitOS-org/sdk-go/v26/metadata"
 	"sprinkl/internal/board"
 	"sprinkl/internal/config"
+	"sprinkl/internal/scheduler"
 	"sprinkl/internal/web"
 	"sprinkl/internal/zone"
 )
@@ -50,7 +51,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	// If setup is already done, initialize board and zone engine immediately.
+	// Scheduler is always created so the wizard can inject the engine later.
+	sched := scheduler.New(cfg, nil)
+
 	var b *board.Board
 	var eng *zone.Engine
 
@@ -62,13 +65,17 @@ func main() {
 		}
 		eng = zone.New(c.GpioManager, b, cfg.Zones)
 		eng.Init()
+		sched.SetEngine(eng)
 		logger.Infof(logTag, "zone engine ready (%d zones, board: %s)", len(cfg.Zones), b.Name)
 	} else {
 		logger.Infof(logTag, "setup not complete — serving wizard")
 	}
 
+	sched.Start()
+	logger.Infof(logTag, "scheduler started")
+
 	// Build and start HTTP server.
-	srv, err := web.New(*dataDir, cfg, b, eng, c)
+	srv, err := web.New(*dataDir, cfg, b, eng, sched, c)
 	if err != nil {
 		logger.Fatalf(logTag, "create web server: %v", err)
 		os.Exit(1)

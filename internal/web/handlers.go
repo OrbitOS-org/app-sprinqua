@@ -12,6 +12,7 @@ import (
 	"sprinkl/internal/board"
 	"sprinkl/internal/config"
 	"sprinkl/internal/i18n"
+	"sprinkl/internal/scheduler"
 	"sprinkl/internal/zone"
 )
 
@@ -249,6 +250,9 @@ func (s *Server) handleSetupStep4(w http.ResponseWriter, r *http.Request) {
 		eng := zone.New(s.gpio, b, s.cfg.Zones)
 		eng.Init()
 		s.engine = eng
+		if s.sched != nil {
+			s.sched.SetEngine(eng)
+		}
 		logger.Infof(logTag, "zone engine initialized with %d zones", len(s.cfg.Zones))
 	}
 
@@ -348,4 +352,159 @@ func (s *Server) zonePrecheck(w http.ResponseWriter, r *http.Request) (int, *zon
 		return 0, nil
 	}
 	return id, s.engine
+}
+
+// ── Schedule ──────────────────────────────────────────────────────────────────
+
+type schedulePageData struct {
+	basePage
+	Schedules []scheduleView
+}
+
+type scheduleView struct {
+	config.Schedule
+	ZoneName string
+	NextRun  string
+}
+
+type scheduleFormData struct {
+	basePage
+	Schedule config.Schedule
+	Zones    []config.Zone
+	IsNew    bool
+}
+
+func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
+	zmap := s.cfg.ZoneMap()
+	pg := s.page(r)
+	views := make([]scheduleView, len(s.cfg.Schedules))
+	for i, sc := range s.cfg.Schedules {
+		next := scheduler.NextRunFor(sc)
+		nextStr := pg.S["sched_no_next"]
+		if next != nil {
+			nextStr = next.Format("Mon 15:04")
+		}
+		views[i] = scheduleView{Schedule: sc, ZoneName: zmap[sc.ZoneID].Name, NextRun: nextStr}
+	}
+	return schedulePageData{basePage: pg, Schedules: views}
+}
+
+func (s *Server) handleSchedule(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "schedule", s.buildSchedulePage(r))
+}
+
+func (s *Server) handleScheduleNew(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "schedule_form", scheduleFormData{
+		basePage: s.page(r),
+		Schedule: config.Schedule{Enabled: true, StartTime: "08:00"},
+		Zones:    s.cfg.Zones,
+		IsNew:    true,
+	})
+}
+
+func (s *Server) handleScheduleEdit(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	for _, sc := range s.cfg.Schedules {
+		if sc.ID == id {
+			s.render(w, "schedule_form", scheduleFormData{
+				basePage: s.page(r),
+				Schedule: sc,
+				Zones:    s.cfg.Zones,
+				IsNew:    false,
+			})
+			return
+		}
+	}
+	http.NotFound(w, r)
+}
+
+func (s *Server) handleScheduleCreate(w http.ResponseWriter, r *http.Request) {
+	sc := s.parseScheduleForm(r)
+	sc.ID = s.cfg.NextScheduleID()
+	s.cfg.Schedules = append(s.cfg.Schedules, sc)
+	if err := s.cfg.Save(s.dataDir); err != nil {
+		logger.Errorf(logTag, "save schedule: %v", err)
+	}
+	http.Redirect(w, r, "/schedule", http.StatusFound)
+}
+
+func (s *Server) handleScheduleUpdate(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	sc := s.parseScheduleForm(r)
+	sc.ID = id
+	for i, existing := range s.cfg.Schedules {
+		if existing.ID == id {
+			s.cfg.Schedules[i] = sc
+			break
+		}
+	}
+	if err := s.cfg.Save(s.dataDir); err != nil {
+		logger.Errorf(logTag, "save schedule: %v", err)
+	}
+	http.Redirect(w, r, "/schedule", http.StatusFound)
+}
+
+func (s *Server) handleScheduleToggle(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.Atoi(r.PathValue("id"))
+	for i := range s.cfg.Schedules {
+		if s.cfg.Schedules[i].ID == id {
+			s.cfg.Schedules[i].Enabled = !s.cfg.Schedules[i].Enabled
+			break
+		}
+	}
+	if err := s.cfg.Save(s.dataDir); err != nil {
+		logger.Errorf(logTag, "save schedule: %v", err)
+	}
+	s.render(w, "schedule_list", s.buildSchedulePage(r))
+}
+
+func (s *Server) handleScheduleDelete(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.Atoi(r.PathValue("id"))
+	kept := s.cfg.Schedules[:0]
+	for _, sc := range s.cfg.Schedules {
+		if sc.ID != id {
+			kept = append(kept, sc)
+		}
+	}
+	s.cfg.Schedules = kept
+	if err := s.cfg.Save(s.dataDir); err != nil {
+		logger.Errorf(logTag, "save schedule: %v", err)
+	}
+	s.render(w, "schedule_list", s.buildSchedulePage(r))
+}
+
+func (s *Server) parseScheduleForm(r *http.Request) config.Schedule {
+	if err := r.ParseForm(); err != nil {
+		return config.Schedule{}
+	}
+	zoneID, _ := strconv.Atoi(r.FormValue("zone_id"))
+	var days []int
+	for _, d := range r.Form["days"] {
+		if n, err := strconv.Atoi(d); err == nil && n >= 0 && n <= 6 {
+			days = append(days, n)
+		}
+	}
+	startTime := r.FormValue("start_time")
+	if startTime == "" {
+		startTime = "08:00"
+	}
+	durMins, _ := strconv.Atoi(r.FormValue("dur_mins"))
+	if durMins <= 0 {
+		durMins = 10
+	}
+	return config.Schedule{
+		ZoneID:    zoneID,
+		Days:      days,
+		StartTime: startTime,
+		DurMins:   durMins,
+		Enabled:   r.FormValue("enabled") == "1",
+	}
 }

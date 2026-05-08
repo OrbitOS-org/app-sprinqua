@@ -15,7 +15,7 @@
 | Zone Engine (ON/OFF/Pulse + safety timer) | ✅ Implementado |
 | MQTT — recolha de config | ✅ Wizard implementado |
 | MQTT — cliente publicação/subscrição | ⬜ Não implementado |
-| Agendamento (scheduler) | ⬜ Não implementado |
+| Agendamento (scheduler) | ✅ Implementado |
 | Smart Watering (sensores, meteo) | ⬜ Não implementado |
 | Histórico de ativações | ⬜ Não implementado |
 
@@ -37,6 +37,8 @@ internal/
     i18n.go            — Deteção de língua, carregamento de strings
     locales/en.json    — Strings EN
     locales/pt.json    — Strings PT
+  scheduler/
+    scheduler.go       — Goroutine de agendamento, NextRunFor, SetEngine
   zone/
     engine.go          — Controlo de relés, safety timer, estado das zonas
   web/
@@ -49,6 +51,8 @@ internal/
       step4.html       — Configuração MQTT
       dashboard.html   — Dashboard completo
       zones_fragment.html — Fragment HTMX para polling de zonas
+      schedule_list.html  — Fragment HTMX com lista de programas
+      schedule_form.html  — Página de criação/edição de programa
 ```
 
 ---
@@ -152,6 +156,9 @@ Ficheiro: `config.json` no working directory da app (sandbox OrbitOS)
   "zones": [
     { "id": 1, "name": "Jardim", "channel": 1, "type": "sprinkler", "max_secs": 1800, "enabled": true }
   ],
+  "schedules": [
+    { "id": 1, "zone_id": 1, "days": [1,2,3,4,5], "start_time": "07:00", "dur_mins": 15, "enabled": true }
+  ],
   "mqtt": {
     "enabled": false,
     "broker": "",
@@ -165,7 +172,20 @@ Ficheiro: `config.json` no working directory da app (sandbox OrbitOS)
 
 ---
 
-## 9. Manifest OrbitOS
+## 9. Scheduler
+
+Ficheiro: `internal/scheduler/scheduler.go`
+
+- Um programa por zona: cada `Schedule` tem `ZoneID`, `Days []int`, `StartTime` (HH:MM), `DurMins`, `Enabled`
+- Goroutine com tick a cada 30s; compara weekday + HH:MM com os programas ativos
+- `lastRun map[int]time.Time` previne disparo duplo na mesma janela de um minuto
+- `SetEngine(eng)` — injeção tardia após wizard concluído ou arranque com setup feito
+- `NextRunFor(sched)` — calcula a próxima data/hora de execução (até 7 dias à frente)
+- UI acessível via `/schedule` com atalhos de dia rápidos (Todos / Dias úteis / Fim de semana)
+
+---
+
+## 10. Manifest OrbitOS
 
 ```json
 {

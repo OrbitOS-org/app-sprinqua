@@ -1,0 +1,65 @@
+{{define "schedule_list"}}
+{{if eq (len .Schedules) 0}}
+<div class="text-center py-14 text-slate-400">
+  <div class="text-5xl mb-3">🗓️</div>
+  <p class="text-sm font-medium">{{.S.sched_empty}}</p>
+</div>
+{{else}}
+<div class="space-y-3">
+  {{range .Schedules}}
+  {{$sc := .}}
+  <div class="bg-white rounded-2xl border-2 p-4 sm:p-5 transition-all duration-300
+    {{if $sc.Enabled}}border-emerald-400 shadow-sm shadow-emerald-100{{else}}border-slate-200{{end}}">
+
+    <div class="flex items-start justify-between gap-3 mb-3">
+      <div class="min-w-0">
+        <div class="flex items-center gap-2">
+          <div class="w-2.5 h-2.5 rounded-full flex-shrink-0
+            {{if $sc.Enabled}}bg-emerald-500{{else}}bg-slate-300{{end}}"></div>
+          <h3 class="font-semibold text-slate-800 truncate">{{$sc.ZoneName}}</h3>
+        </div>
+        <p class="text-xs text-slate-400 mt-1 ml-4">{{printf $.S.sched_next $sc.NextRun}}</p>
+      </div>
+      <div class="flex-shrink-0 text-right">
+        <p class="text-sm font-semibold text-slate-700">{{$sc.StartTime}}</p>
+        <p class="text-xs text-slate-400">{{$sc.DurMins}} {{$.S.sched_form_mins}}</p>
+      </div>
+    </div>
+
+    <div class="flex gap-1 mb-4 ml-4">
+      {{range $d := (slice 0 1 2 3 4 5 6)}}
+      <span class="text-xs font-semibold w-7 h-7 flex items-center justify-center rounded-full
+        {{if hasDay $sc.Days $d}}bg-emerald-600 text-white{{else}}bg-slate-100 text-slate-400{{end}}">
+        {{index $.S (printf "day_%d" $d)}}
+      </span>
+      {{end}}
+    </div>
+
+    <div class="flex gap-2 ml-4">
+      <button
+        hx-post="/schedule/{{$sc.ID}}/toggle"
+        hx-target="#schedule-list"
+        hx-swap="innerHTML"
+        class="text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors
+          {{if $sc.Enabled}}border-slate-200 text-slate-600 hover:bg-slate-50{{else}}border-emerald-200 text-emerald-700 hover:bg-emerald-50{{end}}">
+        {{if $sc.Enabled}}{{$.S.sched_btn_disable}}{{else}}{{$.S.sched_btn_enable}}{{end}}
+      </button>
+      <a href="/schedule/{{$sc.ID}}/edit"
+        class="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">
+        {{$.S.sched_btn_edit}}
+      </a>
+      <button
+        hx-post="/schedule/{{$sc.ID}}/delete"
+        hx-target="#schedule-list"
+        hx-swap="innerHTML"
+        hx-confirm="{{$.S.sched_confirm_delete}}"
+        class="text-xs font-semibold px-3 py-1.5 rounded-lg border border-red-100 text-red-500 hover:bg-red-50 transition-colors">
+        {{$.S.sched_btn_delete}}
+      </button>
+    </div>
+
+  </div>
+  {{end}}
+</div>
+{{end}}
+{{end}}

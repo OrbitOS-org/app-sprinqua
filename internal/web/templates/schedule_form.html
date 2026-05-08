@@ -1,0 +1,144 @@
+{{define "schedule_form"}}
+<!DOCTYPE html>
+<html lang="{{.Lang}}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#ffffff">
+  <title>Sprinkl</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 min-h-screen">
+
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-10">
+    <div class="max-w-2xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <span class="text-xl">💧</span>
+        <h1 class="text-base font-bold text-slate-800 leading-none">Sprinkl</h1>
+      </div>
+      <a href="/schedule" class="text-xs text-slate-400 hover:text-slate-600 transition-colors p-2 -mr-2 rounded-lg">
+        ← {{.S.sched_title}}
+      </a>
+    </div>
+  </header>
+
+  <main class="max-w-2xl mx-auto px-4 sm:px-6 py-5">
+    <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-8">
+
+      <h2 class="text-lg font-semibold text-slate-800 mb-5">
+        {{if .IsNew}}{{.S.sched_form_new}}{{else}}{{.S.sched_form_edit}}{{end}}
+      </h2>
+
+      <form method="POST" action="{{if .IsNew}}/schedule{{else}}/schedule/{{.Schedule.ID}}{{end}}">
+
+        <!-- Zone -->
+        <div class="mb-4">
+          <label class="block text-xs font-medium text-slate-500 mb-1">{{.S.sched_form_zone}}</label>
+          <select name="zone_id"
+            class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white
+                   focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none">
+            {{range .Zones}}
+            <option value="{{.ID}}" {{if eq $.Schedule.ZoneID .ID}}selected{{end}}>{{.Name}}</option>
+            {{end}}
+          </select>
+        </div>
+
+        <!-- Days -->
+        <div class="mb-4">
+          <label class="block text-xs font-medium text-slate-500 mb-2">{{.S.sched_form_days}}</label>
+
+          <!-- Quick-select shortcuts -->
+          <div class="flex gap-2 mb-3">
+            <button type="button" onclick="setDays([0,1,2,3,4,5,6])"
+              class="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 transition-colors">
+              {{.S.sched_quick_all}}
+            </button>
+            <button type="button" onclick="setDays([1,2,3,4,5])"
+              class="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 transition-colors">
+              {{.S.sched_quick_weekdays}}
+            </button>
+            <button type="button" onclick="setDays([0,6])"
+              class="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 transition-colors">
+              {{.S.sched_quick_weekend}}
+            </button>
+          </div>
+
+          <!-- Individual day pills -->
+          <div class="flex gap-2">
+            {{range $d := (slice 0 1 2 3 4 5 6)}}
+            <label class="cursor-pointer">
+              <input type="checkbox" name="days" value="{{$d}}" class="sr-only peer"
+                {{if hasDay $.Schedule.Days $d}}checked{{end}}>
+              <span class="w-9 h-9 flex items-center justify-center rounded-full text-xs font-semibold
+                border-2 transition-colors select-none
+                border-slate-200 text-slate-400
+                peer-checked:border-emerald-500 peer-checked:bg-emerald-600 peer-checked:text-white">
+                {{index $.S (printf "day_%d" $d)}}
+              </span>
+            </label>
+            {{end}}
+          </div>
+        </div>
+
+        <!-- Time + Duration -->
+        <div class="grid grid-cols-2 gap-3 mb-5">
+          <div>
+            <label class="block text-xs font-medium text-slate-500 mb-1">{{.S.sched_form_time}}</label>
+            <input type="time" name="start_time" value="{{.Schedule.StartTime}}" required
+              class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white
+                     focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-500 mb-1">{{.S.sched_form_duration}}</label>
+            <div class="flex items-center gap-2">
+              <input type="number" name="dur_mins"
+                value="{{if gt .Schedule.DurMins 0}}{{.Schedule.DurMins}}{{else}}10{{end}}"
+                min="1" max="240" inputmode="numeric" required
+                class="flex-1 rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white
+                       focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+              <span class="text-sm text-slate-400 flex-shrink-0">{{.S.sched_form_mins}}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Enabled toggle -->
+        <div class="flex items-center gap-3 mb-6">
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" name="enabled" value="1" class="sr-only peer"
+              {{if .Schedule.Enabled}}checked{{end}}>
+            <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-emerald-600
+              after:content-[''] after:absolute after:top-0.5 after:left-0.5
+              after:bg-white after:rounded-full after:h-5 after:w-5
+              after:transition-all peer-checked:after:translate-x-5"></div>
+          </label>
+          <span class="text-sm text-slate-700">{{.S.sched_form_enabled}}</span>
+        </div>
+
+        <div class="flex gap-3">
+          <button type="submit"
+            class="flex-1 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white
+                   font-semibold py-3 px-4 rounded-xl transition-colors text-sm">
+            {{.S.sched_form_save}}
+          </button>
+          <a href="/schedule"
+            class="flex-1 text-center border-2 border-slate-200 text-slate-600 hover:bg-slate-50
+                   font-semibold py-3 px-4 rounded-xl transition-colors text-sm">
+            {{.S.sched_form_cancel}}
+          </a>
+        </div>
+
+      </form>
+    </div>
+  </main>
+
+  <script>
+    function setDays(days) {
+      document.querySelectorAll('input[name="days"]').forEach(cb => {
+        cb.checked = days.includes(parseInt(cb.value));
+      });
+    }
+  </script>
+
+</body>
+</html>
+{{end}}

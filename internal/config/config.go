@@ -13,6 +13,34 @@ type Config struct {
 	Board     string     `json:"board"`
 	Zones     []Zone     `json:"zones"`
 	MQTT      MQTTConfig `json:"mqtt"`
+	Schedules []Schedule `json:"schedules"`
+}
+
+type Schedule struct {
+	ID        int    `json:"id"`
+	ZoneID    int    `json:"zone_id"`
+	Days      []int  `json:"days"`       // 0=Sun … 6=Sat (Go time.Weekday)
+	StartTime string `json:"start_time"` // "HH:MM"
+	DurMins   int    `json:"dur_mins"`
+	Enabled   bool   `json:"enabled"`
+}
+
+func (c *Config) NextScheduleID() int {
+	max := 0
+	for _, s := range c.Schedules {
+		if s.ID > max {
+			max = s.ID
+		}
+	}
+	return max + 1
+}
+
+func (c *Config) ZoneMap() map[int]Zone {
+	m := make(map[int]Zone, len(c.Zones))
+	for _, z := range c.Zones {
+		m[z.ID] = z
+	}
+	return m
 }
 
 type Zone struct {

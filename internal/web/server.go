@@ -13,6 +13,7 @@ import (
 	"sprinkl/internal/board"
 	"sprinkl/internal/config"
 	"sprinkl/internal/i18n"
+	"sprinkl/internal/scheduler"
 	"sprinkl/internal/zone"
 )
 
@@ -29,6 +30,15 @@ var funcMap = template.FuncMap{
 		return a / b
 	},
 	"sub": func(a, b int) int { return a - b },
+	"slice": func(vals ...int) []int { return vals },
+	"hasDay": func(days []int, d int) bool {
+		for _, day := range days {
+			if day == d {
+				return true
+			}
+		}
+		return false
+	},
 }
 
 // basePage is embedded in every template data struct to provide S (strings) and Lang.
@@ -43,6 +53,7 @@ type Server struct {
 	cfg         *config.Config
 	board       *board.Board
 	engine      *zone.Engine
+	sched       *scheduler.Scheduler
 	gpio        *client.GpioManager
 	system      *client.SystemManager
 	appHub      *client.AppHubManager
@@ -56,6 +67,7 @@ func New(
 	cfg *config.Config,
 	b *board.Board,
 	eng *zone.Engine,
+	sched *scheduler.Scheduler,
 	c *client.Client,
 ) (*Server, error) {
 	tmpl, err := template.New("").Funcs(funcMap).ParseFS(templateFS, "templates/*.html")
@@ -67,6 +79,7 @@ func New(
 		cfg:         cfg,
 		board:       b,
 		engine:      eng,
+		sched:       sched,
 		gpio:        c.GpioManager,
 		system:      c.SystemManager,
 		appHub:      c.AppHubManager,
@@ -112,6 +125,15 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/zones/{id}/on", s.handleZoneOn)
 	mux.HandleFunc("POST /api/zones/{id}/off", s.handleZoneOff)
 	mux.HandleFunc("POST /api/zones/{id}/pulse", s.handleZonePulse)
+
+	// Schedule
+	mux.HandleFunc("GET /schedule", s.handleSchedule)
+	mux.HandleFunc("GET /schedule/new", s.handleScheduleNew)
+	mux.HandleFunc("POST /schedule", s.handleScheduleCreate)
+	mux.HandleFunc("GET /schedule/{id}/edit", s.handleScheduleEdit)
+	mux.HandleFunc("POST /schedule/{id}", s.handleScheduleUpdate)
+	mux.HandleFunc("POST /schedule/{id}/toggle", s.handleScheduleToggle)
+	mux.HandleFunc("POST /schedule/{id}/delete", s.handleScheduleDelete)
 }
 
 // lang detects the active language for a request.
