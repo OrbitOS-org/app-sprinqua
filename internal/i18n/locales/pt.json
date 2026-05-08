@@ -1,0 +1,53 @@
+{
+  "app_tagline": "Controlador de Rega Inteligente",
+
+  "progress_board": "Board",
+  "progress_zones": "Zonas",
+  "progress_test": "Teste",
+  "progress_mqtt": "MQTT",
+
+  "step1_title": "Bem-vindo ao Sprinkl",
+  "step1_subtitle": "Seleciona a board de relés ligada ao teu Raspberry Pi.",
+  "step1_board_label": "Board de relés",
+  "step1_channels_label": "Canais disponíveis:",
+
+  "step2_title": "Configura as zonas",
+  "step2_subtitle": "%s · %d canais",
+  "step2_zone_name": "Nome da zona",
+  "step2_zone_type": "Tipo",
+  "step2_zone_max": "Máx (min)",
+  "type_drip": "🌱 Gotejamento",
+  "type_sprinkler": "💦 Aspersão",
+  "type_mist": "🌫️ Nebulização",
+
+  "step3_title": "Testa os relés",
+  "step3_subtitle": "Liga cada relé por 3 segundos para confirmar a ligação física.",
+  "step3_btn_test": "▶ 3s",
+  "test_activated": "✓ Relé CH%d ativado por 3s",
+
+  "step4_title": "Home Assistant / MQTT",
+  "step4_subtitle": "Opcional. Integra com o teu broker MQTT para controlo via Home Assistant.",
+  "step4_toggle_label": "Ativar MQTT",
+  "step4_toggle_desc": "Expõe as zonas como switches no Home Assistant",
+  "step4_broker": "Broker (IP ou hostname)",
+  "step4_port": "Porta",
+  "step4_prefix": "Prefixo de tópicos",
+  "step4_user": "Utilizador",
+  "step4_pass": "Password",
+
+  "btn_continue": "Continuar →",
+  "btn_finish": "✓ Concluir Setup",
+
+  "nav_setup": "⚙ Setup",
+  "zones_title": "Zonas",
+  "zone_active": "ATIVA",
+  "zone_inactive": "INATIVA",
+  "zone_max_fmt": "máx %dmin",
+  "zone_btn_on": "▶ ON",
+  "zone_btn_off": "■ Desligar",
+  "zone_btn_pulse": "⏱ 5 min",
+  "zone_empty_msg": "Nenhuma zona configurada.",
+  "zone_empty_link": "Ir para setup →",
+
+  "lang_switch": "EN"
+}

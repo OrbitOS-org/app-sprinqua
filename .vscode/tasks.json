@@ -1,0 +1,42 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Orbit: Build ORB",
+      "type": "shell",
+      "command": "node",
+      "args": [
+        "/home/zeroone/.vscode/extensions/orbit-os.orbit-studio-0.4.6/out/buildOrbCli.js",
+        "-root",
+        "${workspaceFolder}",
+        "-path",
+        "cmd/sprinkl"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Orbit: Deploy to device",
+      "type": "shell",
+      "command": "go",
+      "args": [
+        "run",
+        "./orbit-os-sdk-go/cmd/orbit-deploy",
+        "-root",
+        "${workspaceFolder}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {}
+      },
+      "group": "none",
+      "problemMatcher": []
+    }
+  ]
+}

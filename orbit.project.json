@@ -1,0 +1,13 @@
+{
+  "language": "go",
+  "appPath": "cmd/sprinkl",
+  "deviceHost": "192.168.1.51",
+  "certsDir": "cmd/certs/grpc",
+  "packagesDir": ".orbit",
+  "expectedOrbBasename": "sprinkl_v0.1.0.orb",
+  "sdkDevPackageNaming": true,
+  "sdkVersion": "v26.0.1",
+  "orbitsignerPath": "",
+  "signingKeyPath": "",
+  "signingCertPath": ""
+}

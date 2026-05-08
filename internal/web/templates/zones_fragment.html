@@ -1,0 +1,75 @@
+{{define "zones_fragment"}}
+<div id="zones-grid"
+  class="grid grid-cols-1 sm:grid-cols-2 gap-3"
+  hx-get="/api/zones/fragment"
+  hx-trigger="every 2s"
+  hx-swap="outerHTML">
+
+  {{if eq (len .Zones) 0}}
+  <div class="col-span-2 text-center py-14 text-slate-400">
+    <div class="text-5xl mb-3">🌱</div>
+    <p class="text-sm font-medium">{{.S.zone_empty_msg}}</p>
+    <a href="/setup" class="text-emerald-600 text-sm font-medium hover:underline mt-1 inline-block">
+      {{.S.zone_empty_link}}
+    </a>
+  </div>
+  {{end}}
+
+  {{range .Zones}}
+  <div class="bg-white rounded-2xl border-2 transition-all duration-300
+    {{if .Active}}border-emerald-400 shadow-sm shadow-emerald-100{{else}}border-slate-200{{end}}
+    p-4 sm:p-5">
+
+    <div class="flex items-start justify-between mb-4 gap-2">
+      <div class="min-w-0">
+        <div class="flex items-center gap-2">
+          <div class="w-2.5 h-2.5 rounded-full flex-shrink-0 mt-0.5
+            {{if .Active}}bg-emerald-500{{else}}bg-slate-300{{end}}"></div>
+          <h3 class="font-semibold text-slate-800 truncate">{{.Name}}</h3>
+        </div>
+        <p class="text-xs text-slate-400 mt-1 ml-4">CH{{.Channel}} · {{.TypeIcon}} {{.Type}}</p>
+      </div>
+      <span class="flex-shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full
+        {{if .Active}}text-emerald-700 bg-emerald-50{{else}}text-slate-400 bg-slate-50{{end}}">
+        {{if .Active}}{{$.S.zone_active}}{{else}}{{$.S.zone_inactive}}{{end}}
+      </span>
+    </div>
+
+    {{if .Active}}
+    <div class="flex items-center justify-between mb-3">
+      <span class="text-emerald-600 text-sm font-mono font-semibold">⏱ {{.FormatActive}}</span>
+      <span class="text-xs text-slate-400">{{printf $.S.zone_max_fmt (divInt .MaxSecs 60)}}</span>
+    </div>
+    <button
+      hx-post="/api/zones/{{.ID}}/off"
+      hx-swap="none"
+      class="w-full py-3 px-4 rounded-xl border-2 border-red-200 text-red-600 text-sm font-semibold
+             hover:bg-red-50 active:bg-red-100 transition-colors">
+      {{$.S.zone_btn_off}}
+    </button>
+
+    {{else}}
+    <div class="grid grid-cols-2 gap-2">
+      <button
+        hx-post="/api/zones/{{.ID}}/on"
+        hx-swap="none"
+        class="py-3 px-4 rounded-xl bg-emerald-600 text-white text-sm font-semibold
+               hover:bg-emerald-700 active:bg-emerald-800 transition-colors">
+        {{$.S.zone_btn_on}}
+      </button>
+      <button
+        hx-post="/api/zones/{{.ID}}/pulse"
+        hx-vals='{"secs":"300"}'
+        hx-swap="none"
+        class="py-3 px-4 rounded-xl border-2 border-amber-300 text-amber-700 text-sm font-semibold
+               hover:bg-amber-50 active:bg-amber-100 transition-colors">
+        {{$.S.zone_btn_pulse}}
+      </button>
+    </div>
+    {{end}}
+
+  </div>
+  {{end}}
+
+</div>
+{{end}}

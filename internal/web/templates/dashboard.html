@@ -1,0 +1,57 @@
+{{define "dashboard"}}
+<!DOCTYPE html>
+<html lang="{{.Lang}}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#ffffff">
+  <title>Sprinkl</title>
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 min-h-screen">
+
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-10">
+    <div class="max-w-2xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <span class="text-xl">💧</span>
+        <div>
+          <h1 class="text-base font-bold text-slate-800 leading-none">Sprinkl</h1>
+          {{if .HWModel}}<p class="text-xs text-slate-400 leading-none mt-0.5">{{.HWModel}}</p>{{end}}
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="/lang/{{if eq .Lang "pt"}}en{{else}}pt{{end}}"
+          class="text-xs text-slate-400 hover:text-slate-600 transition-colors">
+          🌐 {{.S.lang_switch}}
+        </a>
+        <a href="/setup"
+          class="text-xs text-slate-400 hover:text-slate-600 active:text-slate-800 transition-colors p-2 -mr-2 rounded-lg">
+          {{.S.nav_setup}}
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-2xl mx-auto px-4 sm:px-6 py-5">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-wider">{{.S.zones_title}}</h2>
+      <span class="text-xs text-slate-400" id="last-update"></span>
+    </div>
+
+    {{template "zones_fragment" .}}
+  </main>
+
+  <script>
+    document.body.addEventListener('htmx:afterSettle', function() {
+      const el = document.getElementById('last-update');
+      if (el) el.textContent = new Date().toLocaleTimeString('{{.Lang}}', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+    });
+  </script>
+
+</body>
+</html>
+{{end}}

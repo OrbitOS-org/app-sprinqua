@@ -1,0 +1,53 @@
+{
+  "app_tagline": "Smart Irrigation Controller",
+
+  "progress_board": "Board",
+  "progress_zones": "Zones",
+  "progress_test": "Test",
+  "progress_mqtt": "MQTT",
+
+  "step1_title": "Welcome to Sprinkl",
+  "step1_subtitle": "Select the relay board connected to your Raspberry Pi.",
+  "step1_board_label": "Relay board",
+  "step1_channels_label": "Available channels:",
+
+  "step2_title": "Configure zones",
+  "step2_subtitle": "%s · %d channels",
+  "step2_zone_name": "Zone name",
+  "step2_zone_type": "Type",
+  "step2_zone_max": "Max (min)",
+  "type_drip": "🌱 Drip",
+  "type_sprinkler": "💦 Sprinkler",
+  "type_mist": "🌫️ Mist",
+
+  "step3_title": "Test relays",
+  "step3_subtitle": "Activate each relay for 3 seconds to confirm the physical connection.",
+  "step3_btn_test": "▶ 3s",
+  "test_activated": "✓ Relay CH%d active for 3s",
+
+  "step4_title": "Home Assistant / MQTT",
+  "step4_subtitle": "Optional. Connect to your MQTT broker for Home Assistant integration.",
+  "step4_toggle_label": "Enable MQTT",
+  "step4_toggle_desc": "Exposes zones as switches in Home Assistant",
+  "step4_broker": "Broker (IP or hostname)",
+  "step4_port": "Port",
+  "step4_prefix": "Topic prefix",
+  "step4_user": "Username",
+  "step4_pass": "Password",
+
+  "btn_continue": "Continue →",
+  "btn_finish": "✓ Complete Setup",
+
+  "nav_setup": "⚙ Setup",
+  "zones_title": "Zones",
+  "zone_active": "ACTIVE",
+  "zone_inactive": "INACTIVE",
+  "zone_max_fmt": "max %dmin",
+  "zone_btn_on": "▶ ON",
+  "zone_btn_off": "■ Turn Off",
+  "zone_btn_pulse": "⏱ 5 min",
+  "zone_empty_msg": "No zones configured.",
+  "zone_empty_link": "Go to setup →",
+
+  "lang_switch": "PT"
+}

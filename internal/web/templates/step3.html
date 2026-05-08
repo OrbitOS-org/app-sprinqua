@@ -1,0 +1,60 @@
+{{define "step3"}}
+<div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-8">
+
+  <!-- Progress -->
+  <div class="flex items-center mb-7">
+    <div class="flex items-center gap-1.5 flex-shrink-0">
+      <div class="w-8 h-8 rounded-full bg-emerald-200 text-emerald-700 text-xs font-bold flex items-center justify-center">✓</div>
+      <span class="hidden sm:inline text-xs text-slate-400">{{.S.progress_board}}</span>
+    </div>
+    <div class="flex-1 h-px bg-emerald-200 mx-1.5"></div>
+    <div class="flex items-center gap-1.5 flex-shrink-0">
+      <div class="w-8 h-8 rounded-full bg-emerald-200 text-emerald-700 text-xs font-bold flex items-center justify-center">✓</div>
+      <span class="hidden sm:inline text-xs text-slate-400">{{.S.progress_zones}}</span>
+    </div>
+    <div class="flex-1 h-px bg-emerald-200 mx-1.5"></div>
+    <div class="flex items-center gap-1.5 flex-shrink-0">
+      <div class="w-8 h-8 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">3</div>
+      <span class="hidden sm:inline text-xs font-semibold text-emerald-600">{{.S.progress_test}}</span>
+    </div>
+    <div class="flex-1 h-px bg-slate-200 mx-1.5"></div>
+    <div class="flex items-center gap-1.5 flex-shrink-0">
+      <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-400 text-xs font-bold flex items-center justify-center">4</div>
+      <span class="hidden sm:inline text-xs text-slate-400">{{.S.progress_mqtt}}</span>
+    </div>
+  </div>
+
+  <h2 class="text-lg font-semibold text-slate-800 mb-1">{{.S.step3_title}}</h2>
+  <p class="text-slate-500 text-sm mb-5">{{.S.step3_subtitle}}</p>
+
+  <div class="space-y-3 mb-5">
+    {{range .Zones}}
+    <div class="rounded-xl border border-slate-200 p-4 bg-slate-50">
+      <div class="flex items-center justify-between gap-3">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-mono font-semibold text-slate-600 bg-slate-200 px-2 py-0.5 rounded-md flex-shrink-0">CH{{.Channel}}</span>
+            <span class="text-sm font-medium text-slate-800 truncate">{{.Name}}</span>
+          </div>
+        </div>
+        <button
+          hx-post="/setup/test/{{.Channel}}"
+          hx-target="#test-result-{{.Channel}}"
+          hx-swap="innerHTML"
+          class="flex-shrink-0 bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors whitespace-nowrap min-w-[4.5rem]">
+          {{$.S.step3_btn_test}}
+        </button>
+      </div>
+      <div id="test-result-{{.Channel}}" class="mt-2 min-h-[1.25rem]"></div>
+    </div>
+    {{end}}
+  </div>
+
+  <form hx-post="/setup/step/3" hx-target="#wizard-content" hx-swap="innerHTML">
+    <button type="submit"
+      class="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold py-3 px-4 rounded-xl transition-colors text-sm">
+      {{.S.btn_continue}}
+    </button>
+  </form>
+</div>
+{{end}}
