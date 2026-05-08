@@ -2,7 +2,7 @@
 <div id="zones-grid"
   class="grid grid-cols-1 sm:grid-cols-2 gap-3"
   hx-get="/api/zones/fragment"
-  hx-trigger="every 2s"
+  hx-trigger="every 2s, zoneChanged from:body"
   hx-swap="outerHTML">
 
   {{if eq (len .Zones) 0}}
@@ -47,6 +47,7 @@
     <button
       hx-post="/api/zones/{{$z.ID}}/off"
       hx-swap="none"
+      hx-on::after-request="htmx.trigger(document.body, 'zoneChanged')"
       class="w-full py-3 px-4 rounded-xl border-2 border-red-200 text-red-600 text-sm font-semibold
              hover:bg-red-50 active:bg-red-100 transition-colors">
       {{$.S.zone_btn_off}}
@@ -57,6 +58,7 @@
       <button
         hx-post="/api/zones/{{$z.ID}}/on"
         hx-swap="none"
+        hx-on::after-request="htmx.trigger(document.body, 'zoneChanged')"
         class="py-3 px-4 rounded-xl bg-emerald-600 text-white text-sm font-semibold
                hover:bg-emerald-700 active:bg-emerald-800 transition-colors">
         {{$.S.zone_btn_on}}
@@ -65,6 +67,7 @@
         hx-post="/api/zones/{{$z.ID}}/pulse"
         hx-vals='{"secs":"300"}'
         hx-swap="none"
+        hx-on::after-request="htmx.trigger(document.body, 'zoneChanged')"
         class="py-3 px-4 rounded-xl border-2 border-amber-300 text-amber-700 text-sm font-semibold
                hover:bg-amber-50 active:bg-amber-100 transition-colors">
         {{$.S.zone_btn_pulse}}
