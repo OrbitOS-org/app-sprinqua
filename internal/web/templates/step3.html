@@ -28,24 +28,25 @@
   <p class="text-slate-500 text-sm mb-5">{{.S.step3_subtitle}}</p>
 
   <div class="space-y-3 mb-5">
-    {{range .Zones}}
+    {{range $i, $z := .Zones}}
     <div class="rounded-xl border border-slate-200 p-4 bg-slate-50">
       <div class="flex items-center justify-between gap-3">
         <div class="min-w-0">
           <div class="flex items-center gap-2">
-            <span class="text-xs font-mono font-semibold text-slate-600 bg-slate-200 px-2 py-0.5 rounded-md flex-shrink-0">CH{{.Channel}}</span>
-            <span class="text-sm font-medium text-slate-800 truncate">{{.Name}}</span>
+            <span class="text-xs font-mono font-semibold text-white px-2 py-0.5 rounded-md flex-shrink-0"
+                  style="background-color: {{zoneColor $i}}">CH{{$z.Channel}}</span>
+            <span class="text-sm font-medium text-slate-800 truncate">{{$z.Name}}</span>
           </div>
         </div>
         <button
-          hx-post="/setup/test/{{.Channel}}"
-          hx-target="#test-result-{{.Channel}}"
+          hx-post="/setup/test/{{$z.Channel}}"
+          hx-target="#test-result-{{$z.Channel}}"
           hx-swap="innerHTML"
           class="flex-shrink-0 bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors whitespace-nowrap min-w-[4.5rem]">
           {{$.S.step3_btn_test}}
         </button>
       </div>
-      <div id="test-result-{{.Channel}}" class="mt-2 min-h-[1.25rem]"></div>
+      <div id="test-result-{{$z.Channel}}" class="mt-2 min-h-[1.25rem]"></div>
     </div>
     {{end}}
   </div>
