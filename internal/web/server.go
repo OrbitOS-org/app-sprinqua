@@ -126,6 +126,10 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/zones/{id}/off", s.handleZoneOff)
 	mux.HandleFunc("POST /api/zones/{id}/pulse", s.handleZonePulse)
 
+	// Settings
+	mux.HandleFunc("GET /settings", s.handleSettings)
+	mux.HandleFunc("POST /settings", s.handleSettingsSave)
+
 	// Schedule
 	mux.HandleFunc("GET /schedule", s.handleSchedule)
 	mux.HandleFunc("GET /schedule/new", s.handleScheduleNew)

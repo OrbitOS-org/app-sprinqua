@@ -40,6 +40,13 @@
 
   "nav_setup": "⚙ Setup",
   "nav_schedule": "Programas",
+  "nav_settings": "Definições",
+
+  "settings_title": "Definições",
+  "settings_time_format": "Formato de hora",
+  "settings_24h": "24h",
+  "settings_12h": "12h",
+  "settings_save": "Guardar",
 
   "sched_title": "Programas",
   "sched_new": "+ Novo programa",

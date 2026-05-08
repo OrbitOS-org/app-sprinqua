@@ -363,8 +363,9 @@ type schedulePageData struct {
 
 type scheduleView struct {
 	config.Schedule
-	ZoneName string
-	NextRun  string
+	ZoneName    string
+	NextRun     string
+	DisplayTime string // StartTime formatted per TimeFormat
 }
 
 type scheduleFormData struct {
@@ -377,16 +378,38 @@ type scheduleFormData struct {
 func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 	zmap := s.cfg.ZoneMap()
 	pg := s.page(r)
+	use12h := s.cfg.TimeFormat == "12h"
 	views := make([]scheduleView, len(s.cfg.Schedules))
 	for i, sc := range s.cfg.Schedules {
 		next := scheduler.NextRunFor(sc)
 		nextStr := pg.S["sched_no_next"]
 		if next != nil {
-			nextStr = next.Format("Mon 15:04")
+			if use12h {
+				nextStr = next.Format("Mon 3:04 PM")
+			} else {
+				nextStr = next.Format("Mon 15:04")
+			}
 		}
-		views[i] = scheduleView{Schedule: sc, ZoneName: zmap[sc.ZoneID].Name, NextRun: nextStr}
+		views[i] = scheduleView{
+			Schedule:    sc,
+			ZoneName:    zmap[sc.ZoneID].Name,
+			NextRun:     nextStr,
+			DisplayTime: formatStartTime(sc.StartTime, use12h),
+		}
 	}
 	return schedulePageData{basePage: pg, Schedules: views}
+}
+
+// formatStartTime converts a stored "HH:MM" string to display format.
+func formatStartTime(hhmm string, use12h bool) string {
+	t, err := time.Parse("15:04", hhmm)
+	if err != nil {
+		return hhmm
+	}
+	if use12h {
+		return t.Format("3:04 PM")
+	}
+	return t.Format("15:04")
 }
 
 func (s *Server) handleSchedule(w http.ResponseWriter, r *http.Request) {
@@ -479,6 +502,37 @@ func (s *Server) handleScheduleDelete(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf(logTag, "save schedule: %v", err)
 	}
 	s.render(w, "schedule_list", s.buildSchedulePage(r))
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+
+type settingsData struct {
+	basePage
+	TimeFormat string
+}
+
+func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
+	tf := s.cfg.TimeFormat
+	if tf == "" {
+		tf = "24h"
+	}
+	s.render(w, "settings", settingsData{basePage: s.page(r), TimeFormat: tf})
+}
+
+func (s *Server) handleSettingsSave(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "bad form", http.StatusBadRequest)
+		return
+	}
+	tf := r.FormValue("time_format")
+	if tf != "12h" {
+		tf = "24h"
+	}
+	s.cfg.TimeFormat = tf
+	if err := s.cfg.Save(s.dataDir); err != nil {
+		logger.Errorf(logTag, "save settings: %v", err)
+	}
+	http.Redirect(w, r, "/settings", http.StatusFound)
 }
 
 func (s *Server) parseScheduleForm(r *http.Request) config.Schedule {

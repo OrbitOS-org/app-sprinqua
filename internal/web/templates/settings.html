@@ -1,0 +1,71 @@
+{{define "settings"}}
+<!DOCTYPE html>
+<html lang="{{.Lang}}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#ffffff">
+  <title>Sprinkl</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 min-h-screen">
+
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-10">
+    <div class="max-w-2xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <span class="text-xl">💧</span>
+        <h1 class="text-base font-bold text-slate-800 leading-none">Sprinkl</h1>
+      </div>
+      <a href="/dashboard" class="text-xs text-slate-400 hover:text-slate-600 transition-colors p-2 -mr-2 rounded-lg">
+        ← Dashboard
+      </a>
+    </div>
+  </header>
+
+  <main class="max-w-2xl mx-auto px-4 sm:px-6 py-5">
+    <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-8">
+
+      <h2 class="text-lg font-semibold text-slate-800 mb-6">{{.S.settings_title}}</h2>
+
+      <form method="POST" action="/settings">
+
+        <!-- Time format -->
+        <div class="mb-8">
+          <label class="block text-xs font-medium text-slate-500 mb-3">{{.S.settings_time_format}}</label>
+          <div class="flex gap-3">
+            <label class="cursor-pointer flex-1">
+              <input type="radio" name="time_format" value="24h" class="sr-only peer"
+                {{if ne .TimeFormat "12h"}}checked{{end}}>
+              <div class="flex items-center justify-center h-12 rounded-xl border-2 text-sm font-semibold transition-colors
+                border-slate-200 text-slate-500
+                peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-checked:text-emerald-700">
+                {{.S.settings_24h}}
+                <span class="ml-1.5 text-xs font-normal opacity-60">14:30</span>
+              </div>
+            </label>
+            <label class="cursor-pointer flex-1">
+              <input type="radio" name="time_format" value="12h" class="sr-only peer"
+                {{if eq .TimeFormat "12h"}}checked{{end}}>
+              <div class="flex items-center justify-center h-12 rounded-xl border-2 text-sm font-semibold transition-colors
+                border-slate-200 text-slate-500
+                peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-checked:text-emerald-700">
+                {{.S.settings_12h}}
+                <span class="ml-1.5 text-xs font-normal opacity-60">2:30 PM</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <button type="submit"
+          class="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white
+                 font-semibold py-3 px-4 rounded-xl transition-colors text-sm">
+          {{.S.settings_save}}
+        </button>
+
+      </form>
+    </div>
+  </main>
+
+</body>
+</html>
+{{end}}

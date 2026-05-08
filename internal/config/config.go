@@ -9,11 +9,12 @@ import (
 const filename = "config.json"
 
 type Config struct {
-	SetupDone bool       `json:"setup_done"`
-	Board     string     `json:"board"`
-	Zones     []Zone     `json:"zones"`
-	MQTT      MQTTConfig `json:"mqtt"`
-	Schedules []Schedule `json:"schedules"`
+	SetupDone  bool       `json:"setup_done"`
+	Board      string     `json:"board"`
+	Zones      []Zone     `json:"zones"`
+	MQTT       MQTTConfig `json:"mqtt"`
+	Schedules  []Schedule `json:"schedules"`
+	TimeFormat string     `json:"time_format"` // "24h" | "12h"
 }
 
 type Schedule struct {
