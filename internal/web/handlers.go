@@ -454,13 +454,17 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 	}
 
 	// Weekly chart: collect raw bars per day, then pack into lanes.
+	// minBarPct is the minimum rendered width (% of 24h) so short schedules
+	// are always visible. Lane packing uses VISUAL positions so bars never
+	// overlap on screen even when the minimum width expands them past where
+	// the next schedule begins.
+	const minBarPct = 1.5 // ≈ 21 min visual minimum; ~5px on a 350px container
+
 	type rawBar struct {
 		name     string
 		color    string
-		startMin int
-		endMin   int
-		leftPct  float64
-		widthPct float64
+		leftPct  float64 // start position on 0–100% axis
+		rawWidth float64 // actual duration as % (before min applied)
 		dispTime string
 		durMins  int
 	}
@@ -478,13 +482,7 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 		}
 		startMin := t.Hour()*60 + t.Minute()
 		leftPct := float64(startMin) / (24 * 60) * 100
-		widthPct := float64(sc.DurMins) / (24 * 60) * 100
-		if widthPct < 0.7 {
-			widthPct = 0.7
-		}
-		if leftPct+widthPct > 100 {
-			widthPct = 100 - leftPct
-		}
+		rawWidth := float64(sc.DurMins) / (24 * 60) * 100
 		color := zoneColor[sc.ZoneID]
 		name := zmap[sc.ZoneID].Name
 		if !legendSeen[sc.ZoneID] {
@@ -493,10 +491,8 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 		rb := rawBar{
 			name:     name,
 			color:    color,
-			startMin: startMin,
-			endMin:   startMin + sc.DurMins,
 			leftPct:  leftPct,
-			widthPct: widthPct,
+			rawWidth: rawWidth,
 			dispTime: formatStartTime(sc.StartTime, use12h),
 			durMins:  sc.DurMins,
 		}
@@ -507,41 +503,50 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 		}
 	}
 
-	// Lane packing: sort by start time, fit non-overlapping bars onto the same row.
+	// Lane packing using visual end positions to prevent on-screen overlap.
 	chart := make([]chartDay, 7)
 	for d := range chart {
 		bars := dayRaw[d]
-		sort.Slice(bars, func(i, j int) bool { return bars[i].startMin < bars[j].startMin })
+		sort.Slice(bars, func(i, j int) bool { return bars[i].leftPct < bars[j].leftPct })
 
-		laneEnds := []int{} // endMin of the last bar in each lane
+		laneVisualEnds := []float64{} // visual right edge (%) of last bar in each lane
 		for _, rb := range bars {
+			w := rb.rawWidth
+			if w < minBarPct {
+				w = minBarPct
+			}
+			if rb.leftPct+w > 100 {
+				w = 100 - rb.leftPct
+			}
+			visualEnd := rb.leftPct + w
+
 			lane := -1
-			for i, end := range laneEnds {
-				if rb.startMin >= end {
+			for i, end := range laneVisualEnds {
+				if rb.leftPct >= end {
 					lane = i
 					break
 				}
 			}
 			if lane == -1 {
-				lane = len(laneEnds)
-				laneEnds = append(laneEnds, 0)
+				lane = len(laneVisualEnds)
+				laneVisualEnds = append(laneVisualEnds, 0)
 			}
-			laneEnds[lane] = rb.endMin
+			laneVisualEnds[lane] = visualEnd
+
 			chart[d].Bars = append(chart[d].Bars, chartBar{
 				Label:     rb.name,
 				Color:     rb.color,
 				LeftPct:   fmt.Sprintf("%.2f", rb.leftPct),
-				WidthPct:  fmt.Sprintf("%.2f", rb.widthPct),
+				WidthPct:  fmt.Sprintf("%.2f", w),
 				TopPx:     lane * 22,
 				StartTime: rb.dispTime,
 				DurMins:   rb.durMins,
 			})
 		}
-		numLanes := len(laneEnds)
-		if numLanes == 0 {
+		if n := len(laneVisualEnds); n == 0 {
 			chart[d].HeightPx = 20
 		} else {
-			chart[d].HeightPx = numLanes*22 + 4
+			chart[d].HeightPx = n*22 + 4
 		}
 	}
 
