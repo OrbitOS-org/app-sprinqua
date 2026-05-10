@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="drop" x1="0.3" y1="0" x2="0.7" y2="1">
+      <stop offset="0%" stop-color="#42A5F5"/>
+      <stop offset="100%" stop-color="#1565C0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="64" height="64" rx="14" ry="14" fill="#ffffff"/>
+
+  <!-- Water drop -->
+  <path d="M32 13
+           C 38 21, 45 30, 45 40
+           A 13 13 0 0 1 19 40
+           C 19 30, 26 21, 32 13 Z"
+        fill="url(#drop)"/>
+
+  <!-- Highlight -->
+  <ellipse cx="26.5" cy="31" rx="3.5" ry="4.5"
+           fill="white" opacity="0.35"
+           transform="rotate(-20 26.5 31)"/>
+</svg>

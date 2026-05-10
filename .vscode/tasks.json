@@ -10,7 +10,7 @@
         "-root",
         "${workspaceFolder}",
         "-path",
-        "cmd/sprinkl"
+        "cmd/sprinqua"
       ],
       "options": {
         "cwd": "${workspaceFolder}"

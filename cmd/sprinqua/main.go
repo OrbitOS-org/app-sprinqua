@@ -8,11 +8,12 @@ import (
 	"github.com/OrbitOS-org/sdk-go/v26/client"
 	"github.com/OrbitOS-org/sdk-go/v26/logger"
 	"github.com/OrbitOS-org/sdk-go/v26/metadata"
-	"sprinkl/internal/board"
-	"sprinkl/internal/config"
-	"sprinkl/internal/scheduler"
-	"sprinkl/internal/web"
-	"sprinkl/internal/zone"
+	"sprinqua/internal/board"
+	"sprinqua/internal/config"
+	"sprinqua/internal/history"
+	"sprinqua/internal/scheduler"
+	"sprinqua/internal/web"
+	"sprinqua/internal/zone"
 )
 
 const logTag = "main"
@@ -51,8 +52,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	// History store — load existing records, ignore first-run error.
+	hist, err := history.New(*dataDir, cfg)
+	if err != nil {
+		logger.Fatalf(logTag, "load history: %v", err)
+		os.Exit(1)
+	}
+
 	// Scheduler is always created so the wizard can inject the engine later.
 	sched := scheduler.New(cfg, nil)
+	sched.SetHistory(hist)
 
 	var b *board.Board
 	var eng *zone.Engine
@@ -63,7 +72,7 @@ func main() {
 			logger.Fatalf(logTag, "configured board %q not found in registry", cfg.Board)
 			os.Exit(1)
 		}
-		eng = zone.New(c.GpioManager, b, cfg.Zones)
+		eng = zone.New(c.GpioManager, b, cfg.Zones, cfg.IsExclusiveMode())
 		eng.Init()
 		sched.SetEngine(eng)
 		logger.Infof(logTag, "zone engine ready (%d zones, board: %s)", len(cfg.Zones), b.Name)
@@ -75,13 +84,13 @@ func main() {
 	logger.Infof(logTag, "scheduler started")
 
 	// Build and start HTTP server.
-	srv, err := web.New(*dataDir, cfg, b, eng, sched, c)
+	srv, err := web.New(*dataDir, cfg, b, eng, sched, hist, c)
 	if err != nil {
 		logger.Fatalf(logTag, "create web server: %v", err)
 		os.Exit(1)
 	}
 
-	if err := srv.Start(*addr, "/sprinkl"); err != nil {
+	if err := srv.Start(*addr, "/sprinqua"); err != nil {
 		logger.Fatalf(logTag, "HTTP server: %v", err)
 		os.Exit(1)
 	}

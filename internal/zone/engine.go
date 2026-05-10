@@ -9,8 +9,8 @@ import (
 
 	"github.com/OrbitOS-org/sdk-go/v26/client"
 	"github.com/OrbitOS-org/sdk-go/v26/logger"
-	"sprinkl/internal/board"
-	"sprinkl/internal/config"
+	"sprinqua/internal/board"
+	"sprinqua/internal/config"
 )
 
 const logTag = "zone"
@@ -61,17 +61,20 @@ type entry struct {
 
 // Engine manages all zones and their relay GPIO state.
 type Engine struct {
-	mu    sync.Mutex
-	gpio  *client.GpioManager
-	board *board.Board
-	zones map[int]*entry
+	mu             sync.Mutex
+	gpio           *client.GpioManager
+	board          *board.Board
+	zones          map[int]*entry
+	exclusive      bool // when true, activating a zone turns off all others first
+	OnStateChange  func(zoneID int, on bool)
 }
 
-func New(gpio *client.GpioManager, b *board.Board, zones []config.Zone) *Engine {
+func New(gpio *client.GpioManager, b *board.Board, zones []config.Zone, exclusive bool) *Engine {
 	e := &Engine{
-		gpio:  gpio,
-		board: b,
-		zones: make(map[int]*entry),
+		gpio:      gpio,
+		board:     b,
+		zones:     make(map[int]*entry),
+		exclusive: exclusive,
 	}
 	for _, z := range zones {
 		if z.Enabled {
@@ -80,6 +83,13 @@ func New(gpio *client.GpioManager, b *board.Board, zones []config.Zone) *Engine 
 		}
 	}
 	return e
+}
+
+// SetExclusive updates the exclusive mode flag at runtime.
+func (e *Engine) SetExclusive(v bool) {
+	e.mu.Lock()
+	e.exclusive = v
+	e.mu.Unlock()
 }
 
 // Init sets all relay pins as OUTPUT and ensures they start OFF.
@@ -120,6 +130,29 @@ func (e *Engine) relayWrite(pin *client.GpioPin, on bool) error {
 	return e.gpio.SetLevel(pin, level)
 }
 
+// turnOffLocked turns off a zone without acquiring the mutex (must be held by caller).
+func (e *Engine) turnOffLocked(id int) error {
+	en, ok := e.zones[id]
+	if !ok {
+		return fmt.Errorf("zone %d not found", id)
+	}
+	if en.cancel != nil {
+		en.cancel()
+		en.cancel = nil
+	}
+	pin := e.board.PinByChannel(en.cfg.Channel)
+	if err := e.relayWrite(pin, false); err != nil {
+		return fmt.Errorf("zone %d OFF: %w", id, err)
+	}
+	en.active = false
+	logger.Infof(logTag, "zone %d OFF", id)
+	if e.OnStateChange != nil {
+		cb := e.OnStateChange
+		go cb(id, false)
+	}
+	return nil
+}
+
 func (e *Engine) TurnOn(id int) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -129,7 +162,18 @@ func (e *Engine) TurnOn(id int) error {
 		return fmt.Errorf("zone %d not found", id)
 	}
 
-	// Cancel any previous safety timer.
+	// Exclusive mode: turn off every other active zone before activating this one.
+	if e.exclusive {
+		for oid, oen := range e.zones {
+			if oid != id && oen.active {
+				if err := e.turnOffLocked(oid); err != nil {
+					logger.Warnf(logTag, "exclusive off zone %d: %v", oid, err)
+				}
+			}
+		}
+	}
+
+	// Cancel any previous safety timer for this zone.
 	if en.cancel != nil {
 		en.cancel()
 		en.cancel = nil
@@ -141,10 +185,14 @@ func (e *Engine) TurnOn(id int) error {
 	}
 	en.active = true
 	en.startedAt = time.Now()
+	if e.OnStateChange != nil {
+		cb := e.OnStateChange
+		go cb(id, true)
+	}
 
 	maxSecs := en.cfg.MaxSecs
 	if maxSecs <= 0 {
-		maxSecs = 30 * 60 // default 30 min
+		maxSecs = 30 * 60
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -166,22 +214,7 @@ func (e *Engine) TurnOn(id int) error {
 func (e *Engine) TurnOff(id int) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-
-	en, ok := e.zones[id]
-	if !ok {
-		return fmt.Errorf("zone %d not found", id)
-	}
-	if en.cancel != nil {
-		en.cancel()
-		en.cancel = nil
-	}
-	pin := e.board.PinByChannel(en.cfg.Channel)
-	if err := e.relayWrite(pin, false); err != nil {
-		return fmt.Errorf("zone %d OFF: %w", id, err)
-	}
-	en.active = false
-	logger.Infof(logTag, "zone %d OFF", id)
-	return nil
+	return e.turnOffLocked(id)
 }
 
 // Pulse turns a zone ON and auto-offs after secs seconds.

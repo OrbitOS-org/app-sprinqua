@@ -16,7 +16,9 @@
         <div class="flex items-center gap-2">
           <div class="w-2.5 h-2.5 rounded-full flex-shrink-0
             {{if $sc.Enabled}}bg-emerald-500{{else}}bg-slate-300{{end}}"></div>
-          <h3 class="font-semibold text-slate-800 truncate">{{$sc.ZoneName}}</h3>
+          <h3 class="font-semibold text-slate-800 truncate">
+            {{if $sc.Name}}{{$sc.Name}}<span class="font-normal text-slate-400 ml-1">· {{$sc.ZoneName}}</span>{{else}}{{$sc.ZoneName}}{{end}}
+          </h3>
         </div>
         <p class="text-xs text-slate-400 mt-1 ml-4">{{printf $.S.sched_next $sc.NextRun}}</p>
       </div>

@@ -10,18 +10,28 @@ import (
 
 	"github.com/OrbitOS-org/sdk-go/v26/client"
 	"github.com/OrbitOS-org/sdk-go/v26/logger"
-	"sprinkl/internal/board"
-	"sprinkl/internal/config"
-	"sprinkl/internal/i18n"
-	"sprinkl/internal/scheduler"
-	"sprinkl/internal/zone"
+	"sprinqua/internal/board"
+	"sprinqua/internal/config"
+	"sprinqua/internal/history"
+	"sprinqua/internal/i18n"
+	"sprinqua/internal/scheduler"
+	"sprinqua/internal/weather"
+	"sprinqua/internal/zone"
 )
 
 // ── Language switcher ─────────────────────────────────────────────────────────
 
 func (s *Server) handleLang(w http.ResponseWriter, r *http.Request) {
 	code := r.PathValue("code")
-	if code != "en" && code != "pt" {
+	supported := i18n.Supported()
+	ok := false
+	for _, s := range supported {
+		if code == s {
+			ok = true
+			break
+		}
+	}
+	if !ok {
 		http.Error(w, "unsupported language", http.StatusBadRequest)
 		return
 	}
@@ -40,7 +50,7 @@ func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/dashboard", http.StatusFound)
 		return
 	}
-	http.Redirect(w, r, "/setup", http.StatusFound)
+	http.Redirect(w, r, "/setup/wizard", http.StatusFound)
 }
 
 // ── Setup Wizard ──────────────────────────────────────────────────────────────
@@ -68,8 +78,163 @@ type step4Data struct {
 	TimeFormat string
 }
 
+type langOption struct {
+	Code  string
+	Label string
+}
+
+type settingsData struct {
+	basePage
+	MQTT           config.MQTTConfig
+	TimeFormat     string
+	ExclusiveMode  bool
+	SmartWatering  config.SmartWateringConfig
+	SetupDone      bool
+	BoardName      string
+	ZoneCount      int
+	SupportedLangs []langOption
+}
+
+var langLabels = map[string]string{
+	"en": "🇬🇧 English",
+	"pt": "🇵🇹 Português",
+	"de": "🇩🇪 Deutsch",
+	"es": "🇪🇸 Español",
+	"fr": "🇫🇷 Français",
+	"it": "🇮🇹 Italiano",
+}
+
+// handleSetup renders the Settings page (always the entry point for the Setup tab).
 func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
+	tf := s.cfg.TimeFormat
+	if tf == "" {
+		tf = "24h"
+	}
+	var boardName string
+	if b := board.Find(s.cfg.Board); b != nil {
+		boardName = b.Name
+	}
+	var langs []langOption
+	for _, code := range i18n.Supported() {
+		langs = append(langs, langOption{Code: code, Label: langLabels[code]})
+	}
+	sw := s.cfg.SmartWatering
+	if sw.RainThresholdMM <= 0 {
+		sw.RainThresholdMM = 2.0
+	}
+	s.render(w, "settings", settingsData{
+		basePage:       s.page(r),
+		MQTT:           s.cfg.MQTT,
+		TimeFormat:     tf,
+		ExclusiveMode:  s.cfg.IsExclusiveMode(),
+		SmartWatering:  sw,
+		SetupDone:      s.cfg.SetupDone,
+		BoardName:      boardName,
+		ZoneCount:      len(s.cfg.Zones),
+		SupportedLangs: langs,
+	})
+}
+
+// handleSetupWizard starts the hardware wizard (step 1).
+func (s *Server) handleSetupWizard(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "wizard", step1Data{basePage: s.page(r), Boards: board.All})
+}
+
+// handleSettingsSave persists clock format and MQTT preferences.
+func (s *Server) handleSettingsSave(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "bad form", http.StatusBadRequest)
+		return
+	}
+	tf := r.FormValue("time_format")
+	if tf != "12h" {
+		tf = "24h"
+	}
+	s.cfg.TimeFormat = tf
+
+	exclusive := r.FormValue("exclusive_mode") == "1"
+	s.cfg.ExclusiveMode = &exclusive
+	if s.engine != nil {
+		s.engine.SetExclusive(exclusive)
+	}
+
+	if r.FormValue("mqtt_enabled") == "1" {
+		port, _ := strconv.Atoi(r.FormValue("mqtt_port"))
+		if port <= 0 {
+			port = 1883
+		}
+		prefix := r.FormValue("mqtt_prefix")
+		if prefix == "" {
+			prefix = "sprinqua"
+		}
+		mode := r.FormValue("mqtt_mode")
+		if mode != "passive" {
+			mode = "active"
+		}
+		s.cfg.MQTT = config.MQTTConfig{
+			Enabled:  true,
+			Mode:     mode,
+			Broker:   r.FormValue("mqtt_broker"),
+			Port:     port,
+			Username: r.FormValue("mqtt_user"),
+			Password: r.FormValue("mqtt_pass"),
+			Prefix:   prefix,
+		}
+	} else {
+		s.cfg.MQTT.Enabled = false
+		s.cfg.MQTT.Mode = "active"
+	}
+	s.sched.SetPaused(s.cfg.MQTT.IsPassive())
+
+	swEnabled := r.FormValue("sw_enabled") == "1"
+	swLat, _ := strconv.ParseFloat(r.FormValue("sw_lat"), 64)
+	swLon, _ := strconv.ParseFloat(r.FormValue("sw_lon"), 64)
+	swThresh, _ := strconv.ParseFloat(r.FormValue("sw_threshold"), 64)
+	if swThresh <= 0 {
+		swThresh = 2.0
+	}
+	s.cfg.SmartWatering = config.SmartWateringConfig{
+		Enabled:         swEnabled,
+		Lat:             swLat,
+		Lon:             swLon,
+		RainThresholdMM: swThresh,
+	}
+
+	if err := s.cfg.Save(s.dataDir); err != nil {
+		logger.Errorf(logTag, "save settings: %v", err)
+		http.Error(w, "save failed", http.StatusInternalServerError)
+		return
+	}
+
+	// Reconnect MQTT with updated config.
+	if s.engine != nil {
+		s.mqttClient.Connect(s.cfg.MQTT, s.cfg.Zones, s.engine, s.hist)
+	}
+
+	http.Redirect(w, r, "/setup", http.StatusFound)
+}
+
+// handleSetupReset clears zones, schedules and history, then redirects to the wizard.
+func (s *Server) handleSetupReset(w http.ResponseWriter, r *http.Request) {
+	s.cfg.SetupDone = false
+	s.cfg.Board = ""
+	s.cfg.Zones = nil
+	s.cfg.Schedules = nil
+	// Intentionally keep TimeFormat and MQTT — they are preferences, not HW config.
+
+	s.engine = nil
+	s.board = nil
+	if s.sched != nil {
+		s.sched.SetEngine(nil)
+	}
+
+	if err := s.cfg.Save(s.dataDir); err != nil {
+		logger.Errorf(logTag, "reset config: %v", err)
+	}
+	if s.hist != nil {
+		s.hist.Clear()
+	}
+	http.Redirect(w, r, "/setup/wizard", http.StatusFound)
 }
 
 // initBoardPins configures every channel on the board as OUTPUT and ensures
@@ -89,6 +254,21 @@ func (s *Server) initBoardPins(b *board.Board) {
 		}
 	}
 	logger.Infof(logTag, "board %q: %d pins initialized as OUTPUT/OFF", b.ID, len(b.Pins))
+}
+
+func (s *Server) handleSetupChannels(w http.ResponseWriter, r *http.Request) {
+	b := board.Find(r.URL.Query().Get("board_id"))
+	if b == nil {
+		b = board.All[0]
+	}
+	strs := i18n.Strings(s.lang(r))
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	fmt.Fprintf(w, `<span class="text-xs text-slate-400">%s</span>`, strs["step1_channels_label"])
+	for i, ch := range b.Pins {
+		color := zoneColors[i%len(zoneColors)]
+		fmt.Fprintf(w, ` <span class="text-xs font-semibold text-white px-2.5 py-1 rounded-full" style="background-color: %s">CH%d</span>`,
+			color, ch.Number)
+	}
 }
 
 func (s *Server) handleSetupStep1(w http.ResponseWriter, r *http.Request) {
@@ -207,69 +387,27 @@ func (s *Server) handleSetupTest(w http.ResponseWriter, r *http.Request) {
 		fmt.Sprintf(strs["test_activated"], ch))
 }
 
+// handleSetupStep3 finalizes the wizard: saves config, initializes engine, redirects to settings.
 func (s *Server) handleSetupStep3(w http.ResponseWriter, r *http.Request) {
-	tf := s.cfg.TimeFormat
-	if tf == "" {
-		tf = "24h"
-	}
-	s.render(w, "step4", step4Data{
-		basePage:   s.page(r),
-		MQTT:       config.MQTTConfig{Port: 1883, Prefix: "sprinkl"},
-		TimeFormat: tf,
-	})
-}
-
-func (s *Server) handleSetupStep4(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "bad form", http.StatusBadRequest)
-		return
-	}
-
-	if r.FormValue("mqtt_enabled") == "1" {
-		port, _ := strconv.Atoi(r.FormValue("mqtt_port"))
-		if port <= 0 {
-			port = 1883
-		}
-		prefix := r.FormValue("mqtt_prefix")
-		if prefix == "" {
-			prefix = "sprinkl"
-		}
-		s.cfg.MQTT = config.MQTTConfig{
-			Enabled:  true,
-			Broker:   r.FormValue("mqtt_broker"),
-			Port:     port,
-			Username: r.FormValue("mqtt_user"),
-			Password: r.FormValue("mqtt_pass"),
-			Prefix:   prefix,
-		}
-	}
-
-	tf := r.FormValue("time_format")
-	if tf != "12h" {
-		tf = "24h"
-	}
-	s.cfg.TimeFormat = tf
-
 	s.cfg.SetupDone = true
 	if err := s.cfg.Save(s.dataDir); err != nil {
 		logger.Errorf(logTag, "save config: %v", err)
 		http.Error(w, "failed to save config", http.StatusInternalServerError)
 		return
 	}
-
 	b := board.Find(s.cfg.Board)
 	if b != nil {
 		s.board = b
-		eng := zone.New(s.gpio, b, s.cfg.Zones)
+		eng := zone.New(s.gpio, b, s.cfg.Zones, s.cfg.IsExclusiveMode())
 		eng.Init()
 		s.engine = eng
 		if s.sched != nil {
 			s.sched.SetEngine(eng)
 		}
 		logger.Infof(logTag, "zone engine initialized with %d zones", len(s.cfg.Zones))
+		s.mqttClient.Connect(s.cfg.MQTT, s.cfg.Zones, eng, s.hist)
 	}
-
-	w.Header().Set("HX-Redirect", "/dashboard")
+	w.Header().Set("HX-Redirect", "/setup")
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -321,6 +459,9 @@ func (s *Server) handleZoneOn(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	if s.hist != nil {
+		s.hist.Start(id, history.Manual)
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -333,6 +474,9 @@ func (s *Server) handleZoneOff(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf(logTag, "zone %d OFF: %v", id, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
+	}
+	if s.hist != nil {
+		s.hist.Stop(id)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -350,6 +494,14 @@ func (s *Server) handleZonePulse(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf(logTag, "zone %d pulse: %v", id, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
+	}
+	if s.hist != nil {
+		hist := s.hist
+		s.hist.Start(id, history.Pulse)
+		go func() {
+			time.Sleep(time.Duration(secs) * time.Second)
+			hist.Stop(id)
+		}()
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -402,10 +554,11 @@ type chartDay struct {
 
 type schedulePageData struct {
 	basePage
-	Schedules  []scheduleView
-	Chart      []chartDay
-	ZoneLegend []legendEntry
-	Ruler      [5]string // time labels at 0%, 25%, 50%, 75%, 100% of chart range
+	Schedules    []scheduleView
+	Chart        []chartDay
+	ZoneLegend   []legendEntry
+	Ruler        [5]string // time labels at 0%, 25%, 50%, 75%, 100% of chart range
+	PassiveMode  bool      // true when MQTT passive mode is active
 }
 
 type scheduleView struct {
@@ -604,11 +757,12 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 	}
 
 	return schedulePageData{
-		basePage:   pg,
-		Schedules:  views,
-		Chart:      chart,
-		ZoneLegend: legend,
-		Ruler:      ruler,
+		basePage:    pg,
+		Schedules:   views,
+		Chart:       chart,
+		ZoneLegend:  legend,
+		Ruler:       ruler,
+		PassiveMode: s.cfg.MQTT.IsPassive(),
 	}
 }
 
@@ -726,6 +880,237 @@ func (s *Server) handleScheduleDelete(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "schedule_list", s.buildSchedulePage(r))
 }
 
+// ── History ───────────────────────────────────────────────────────────────────
+
+type historyEntryView struct {
+	history.Entry
+	Color     string
+	TrigLabel string
+	StartStr  string
+	EndStr    string
+	DurStr    string
+	Active    bool
+}
+
+type historyChartBar struct {
+	LeftPct  string
+	WidthPct string
+	Color    string
+	Title    string // tooltip
+}
+
+type historyChartRow struct {
+	ZoneName string
+	Channel  int
+	Color    string
+	Bars     []historyChartBar
+}
+
+type historyStats struct {
+	DurStr  string // "2h 35min" | "45min" | "—"
+	Runs    int
+	Skipped int
+	TopZone string // zone with most runs, empty if 0
+}
+
+type historyPageData struct {
+	basePage
+	Stats      historyStats
+	Entries    []historyEntryView
+	ChartRows  []historyChartRow
+	ChartRuler [5]string
+}
+
+func (s *Server) handleHistory(w http.ResponseWriter, r *http.Request) {
+	pg := s.page(r)
+	use12h := s.cfg.TimeFormat == "12h"
+
+	zoneIdx := make(map[int]int, len(s.cfg.Zones))
+	for i, z := range s.cfg.Zones {
+		zoneIdx[z.ID] = i
+	}
+
+	// ── Entry list ────────────────────────────────────────────────────────────
+	var allEntries []history.Entry
+	if s.hist != nil {
+		allEntries = s.hist.Recent(0)
+	}
+
+	timeFmt := "15:04"
+	if use12h {
+		timeFmt = "3:04 PM"
+	}
+
+	var views []historyEntryView
+	for _, e := range allEntries {
+		idx := zoneIdx[e.ZoneID]
+		color := zoneColors[idx%len(zoneColors)]
+
+		var trigLabel string
+		if e.Skipped {
+			trigLabel = pg.S["hist_trigger_skipped_sw"]
+		} else {
+			switch e.Trigger {
+			case history.Manual:
+				trigLabel = pg.S["hist_trigger_manual"]
+			case history.Schedule:
+				trigLabel = pg.S["hist_trigger_schedule"]
+			case history.Pulse:
+				trigLabel = pg.S["hist_trigger_pulse"]
+			case history.MQTT:
+				trigLabel = pg.S["hist_trigger_mqtt"]
+			}
+		}
+
+		startStr := e.StartedAt.Format("02 Jan · " + timeFmt)
+		endStr := pg.S["hist_active"]
+		durStr := ""
+		active := e.EndedAt == nil
+		if !active {
+			endStr = e.EndedAt.Format(timeFmt)
+			m := e.DurSecs / 60
+			sec := e.DurSecs % 60
+			if m > 0 {
+				durStr = fmt.Sprintf("%dm %ds", m, sec)
+			} else {
+				durStr = fmt.Sprintf("%ds", sec)
+			}
+		}
+
+		views = append(views, historyEntryView{
+			Entry:     e,
+			Color:     color,
+			TrigLabel: trigLabel,
+			StartStr:  startStr,
+			EndStr:    endStr,
+			DurStr:    durStr,
+			Active:    active,
+		})
+	}
+
+	// ── 24h timeline chart ────────────────────────────────────────────────────
+	now := time.Now()
+	windowStart := now.Add(-24 * time.Hour)
+	windowSecs := 24 * 60 * 60.0
+
+	// Ruler: 5 marks spaced 6h apart.
+	var ruler [5]string
+	for i := range ruler {
+		t := windowStart.Add(time.Duration(i) * 6 * time.Hour)
+		if use12h {
+			ruler[i] = t.Format("3:04PM")
+		} else {
+			ruler[i] = t.Format("15:04")
+		}
+	}
+
+	chartRows := make([]historyChartRow, 0, len(s.cfg.Zones))
+	for _, z := range s.cfg.Zones {
+		idx := zoneIdx[z.ID]
+		color := zoneColors[idx%len(zoneColors)]
+		var bars []historyChartBar
+		for _, e := range allEntries {
+			if e.ZoneID != z.ID || e.Skipped {
+				continue
+			}
+			end := now
+			if e.EndedAt != nil {
+				end = *e.EndedAt
+			}
+			if end.Before(windowStart) || e.StartedAt.After(now) {
+				continue
+			}
+			cStart := e.StartedAt
+			if cStart.Before(windowStart) {
+				cStart = windowStart
+			}
+			cEnd := end
+			if cEnd.After(now) {
+				cEnd = now
+			}
+			leftPct := cStart.Sub(windowStart).Seconds() / windowSecs * 100
+			widthPct := cEnd.Sub(cStart).Seconds() / windowSecs * 100
+			if widthPct < 0.4 {
+				widthPct = 0.4
+			}
+
+			var ttDur string
+			if e.EndedAt != nil {
+				m := e.DurSecs / 60
+				sec := e.DurSecs % 60
+				if m > 0 {
+					ttDur = fmt.Sprintf("%dm%ds", m, sec)
+				} else {
+					ttDur = fmt.Sprintf("%ds", sec)
+				}
+			} else {
+				ttDur = pg.S["hist_active"]
+			}
+			bars = append(bars, historyChartBar{
+				LeftPct:  fmt.Sprintf("%.3f", leftPct),
+				WidthPct: fmt.Sprintf("%.3f", widthPct),
+				Color:    color,
+				Title:    fmt.Sprintf("%s · %s · %s", z.Name, e.StartedAt.Format(timeFmt), ttDur),
+			})
+		}
+		chartRows = append(chartRows, historyChartRow{
+			ZoneName: z.Name,
+			Channel:  z.Channel,
+			Color:    color,
+			Bars:     bars,
+		})
+	}
+
+	// ── Stats (last 7 days) ───────────────────────────────────────────────────
+	week := now.Add(-7 * 24 * time.Hour)
+	var totalSecs, runs, skipped int
+	zoneCounts := make(map[int]int)
+	for _, e := range allEntries {
+		if e.StartedAt.Before(week) {
+			continue
+		}
+		if e.Skipped {
+			skipped++
+		} else {
+			runs++
+			totalSecs += e.DurSecs
+			zoneCounts[e.ZoneID]++
+		}
+	}
+	var durStr string
+	if totalSecs == 0 {
+		durStr = "—"
+	} else {
+		h := totalSecs / 3600
+		m := (totalSecs % 3600) / 60
+		if h > 0 {
+			durStr = fmt.Sprintf("%dh %dmin", h, m)
+		} else {
+			durStr = fmt.Sprintf("%dmin", m)
+		}
+	}
+	var topZone string
+	var topCount int
+	zmap := s.cfg.ZoneMap()
+	for zid, cnt := range zoneCounts {
+		if cnt > topCount {
+			topCount = cnt
+			topZone = zmap[zid].Name
+		}
+	}
+	if len(zoneCounts) <= 1 {
+		topZone = ""
+	}
+
+	s.render(w, "history", historyPageData{
+		basePage:   pg,
+		Stats:      historyStats{DurStr: durStr, Runs: runs, Skipped: skipped, TopZone: topZone},
+		Entries:    views,
+		ChartRows:  chartRows,
+		ChartRuler: ruler,
+	})
+}
+
 func (s *Server) parseScheduleForm(r *http.Request) config.Schedule {
 	if err := r.ParseForm(); err != nil {
 		return config.Schedule{}
@@ -746,10 +1131,67 @@ func (s *Server) parseScheduleForm(r *http.Request) config.Schedule {
 		durMins = 10
 	}
 	return config.Schedule{
+		Name:      r.FormValue("name"),
 		ZoneID:    zoneID,
 		Days:      days,
 		StartTime: startTime,
 		DurMins:   durMins,
 		Enabled:   r.FormValue("enabled") == "1",
 	}
+}
+
+// handleWeatherStatus returns an HTMX fragment showing today's rain forecast
+// and whether irrigation would be allowed or skipped.
+func (s *Server) handleWeatherStatus(w http.ResponseWriter, r *http.Request) {
+	bp := s.page(r)
+	str := bp.S
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+	sw := s.cfg.SmartWatering
+	if !sw.Enabled || (sw.Lat == 0 && sw.Lon == 0) {
+		fmt.Fprintf(w, `<div id="sw-status" class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
+  <p class="text-xs text-slate-400">%s</p>
+  <button hx-get="/api/weather" hx-swap="outerHTML" hx-target="#sw-status"
+    class="text-slate-400 hover:text-slate-600 text-base px-1 flex-shrink-0">↻</button>
+</div>`, str["sw_status_no_loc"])
+		return
+	}
+
+	res, err := weather.FetchToday(sw.Lat, sw.Lon)
+	if err != nil {
+		logger.Warnf(logTag, "weather status: %v", err)
+		fmt.Fprintf(w, `<div id="sw-status" class="rounded-xl border border-red-100 bg-red-50 px-4 py-3 flex items-center justify-between">
+  <p class="text-xs text-red-500">%s</p>
+  <button hx-get="/api/weather" hx-swap="outerHTML" hx-target="#sw-status"
+    class="text-red-400 hover:text-red-600 text-base px-1 flex-shrink-0">↻</button>
+</div>`, str["sw_status_error"])
+		return
+	}
+
+	threshold := sw.EffectiveThreshold()
+	allowed := res.RainMM < threshold
+
+	todayLine := fmt.Sprintf(str["sw_status_today"], res.RainMM)
+	var statusLine, icon, borderCls, textCls string
+	if allowed {
+		icon = "☀️"
+		borderCls = "border-emerald-200 bg-emerald-50"
+		textCls = "text-emerald-700"
+		statusLine = fmt.Sprintf(str["sw_status_ok"], threshold)
+	} else {
+		icon = "🌧️"
+		borderCls = "border-amber-200 bg-amber-50"
+		textCls = "text-amber-700"
+		statusLine = fmt.Sprintf(str["sw_status_skip"], threshold)
+	}
+
+	fmt.Fprintf(w, `<div id="sw-status" class="rounded-xl border %s px-4 py-3 flex items-center gap-3">
+  <span class="text-2xl flex-shrink-0">%s</span>
+  <div class="flex-1 min-w-0">
+    <p class="text-sm font-semibold text-slate-800">%s</p>
+    <p class="text-xs %s font-medium mt-0.5">%s</p>
+  </div>
+  <button hx-get="/api/weather" hx-swap="outerHTML" hx-target="#sw-status"
+    class="text-slate-400 hover:text-slate-600 text-lg flex-shrink-0 px-1">↻</button>
+</div>`, borderCls, icon, todayLine, textCls, statusLine)
 }

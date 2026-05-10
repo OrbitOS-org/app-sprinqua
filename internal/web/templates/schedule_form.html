@@ -3,9 +3,10 @@
 <html lang="{{.Lang}}">
 <head>
   <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9IiNmZmYiLz48cGF0aCBkPSJNMzIgOEMzOCAxNiA0NyAyOCA0NyA0MEExNSAxNSAwIDAgMSAxNyA0MEMxNyAyOCAyNiAxNiAzMiA4WiIgZmlsbD0iIzIxOTZGMyIvPjxlbGxpcHNlIGN4PSIyNiIgY3k9IjMwIiByeD0iMyIgcnk9IjQiIGZpbGw9IndoaXRlIiBvcGFjaXR5PSIuMzUiIHRyYW5zZm9ybT0icm90YXRlKC0yMCAyNiAzMCkiLz48L3N2Zz4=">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#ffffff">
-  <title>Sprinkl</title>
+  <title>Sprinqua</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-100 min-h-screen">
@@ -14,7 +15,7 @@
     <div class="max-w-2xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
         <span class="text-xl">💧</span>
-        <h1 class="text-base font-bold text-slate-800 leading-none">Sprinkl</h1>
+        <h1 class="text-base font-bold text-slate-800 leading-none">Sprinqua</h1>
       </div>
       <a href="/schedule" class="text-xs text-slate-400 hover:text-slate-600 transition-colors p-2 -mr-2 rounded-lg">
         ← {{.S.sched_title}}
@@ -30,6 +31,14 @@
       </h2>
 
       <form method="POST" action="{{if .IsNew}}/schedule{{else}}/schedule/{{.Schedule.ID}}{{end}}">
+
+        <!-- Name -->
+        <div class="mb-4">
+          <label class="block text-xs font-medium text-slate-500 mb-1">{{.S.sched_form_name}}</label>
+          <input type="text" name="name" value="{{.Schedule.Name}}" placeholder="{{.S.sched_form_name}}"
+            class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white
+                   focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+        </div>
 
         <!-- Zone -->
         <div class="mb-4">

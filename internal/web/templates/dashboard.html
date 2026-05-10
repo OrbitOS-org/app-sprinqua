@@ -3,12 +3,13 @@
 <html lang="{{.Lang}}">
 <head>
   <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9IiNmZmYiLz48cGF0aCBkPSJNMzIgOEMzOCAxNiA0NyAyOCA0NyA0MEExNSAxNSAwIDAgMSAxNyA0MEMxNyAyOCAyNiAxNiAzMiA4WiIgZmlsbD0iIzIxOTZGMyIvPjxlbGxpcHNlIGN4PSIyNiIgY3k9IjMwIiByeD0iMyIgcnk9IjQiIGZpbGw9IndoaXRlIiBvcGFjaXR5PSIuMzUiIHRyYW5zZm9ybT0icm90YXRlKC0yMCAyNiAzMCkiLz48L3N2Zz4=">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="theme-color" content="#ffffff">
-  <title>Sprinkl</title>
+  <title>Sprinqua</title>
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -18,22 +19,23 @@
     <div class="max-w-2xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
         <span class="text-xl">💧</span>
-        <div>
-          <h1 class="text-base font-bold text-slate-800 leading-none">Sprinkl</h1>
-          {{if .HWModel}}<p class="text-xs text-slate-400 leading-none mt-0.5">{{.HWModel}}</p>{{end}}
-        </div>
+        <h1 class="text-base font-bold text-slate-800 leading-none">Sprinqua</h1>
       </div>
-      <div class="flex items-center gap-3">
-        <a href="/lang/{{if eq .Lang "pt"}}en{{else}}pt{{end}}"
-          class="text-xs text-slate-400 hover:text-slate-600 transition-colors">
-          🌐 {{.S.lang_switch}}
+      <div class="flex items-center gap-0.5">
+        <a href="/dashboard"
+          class="text-xs px-2 py-2 rounded-lg transition-colors {{if eq .ActiveTab "zones"}}font-bold text-slate-800{{else}}text-slate-400 hover:text-slate-600{{end}}">
+          {{.S.zones_title}}
+        </a>
+        <a href="/history"
+          class="text-xs px-2 py-2 rounded-lg transition-colors {{if eq .ActiveTab "history"}}font-bold text-slate-800{{else}}text-slate-400 hover:text-slate-600{{end}}">
+          {{.S.nav_history}}
         </a>
         <a href="/schedule"
-          class="text-xs text-slate-400 hover:text-slate-600 transition-colors p-2 rounded-lg">
+          class="text-xs px-2 py-2 rounded-lg transition-colors {{if eq .ActiveTab "schedule"}}font-bold text-slate-800{{else}}text-slate-400 hover:text-slate-600{{end}}">
           {{.S.nav_schedule}}
         </a>
         <a href="/setup"
-          class="text-xs text-slate-400 hover:text-slate-600 active:text-slate-800 transition-colors p-2 -mr-2 rounded-lg">
+          class="text-xs px-2 py-2 rounded-lg transition-colors {{if eq .ActiveTab "setup"}}font-bold text-slate-800{{else}}text-slate-400 hover:text-slate-600{{end}}">
           {{.S.nav_setup}}
         </a>
       </div>

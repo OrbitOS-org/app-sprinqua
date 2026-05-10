@@ -3,10 +3,15 @@
 <html lang="{{.Lang}}">
 <head>
   <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9IiNmZmYiLz48cGF0aCBkPSJNMzIgOEMzOCAxNiA0NyAyOCA0NyA0MEExNSAxNSAwIDAgMSAxNyA0MEMxNyAyOCAyNiAxNiAzMiA4WiIgZmlsbD0iIzIxOTZGMyIvPjxlbGxpcHNlIGN4PSIyNiIgY3k9IjMwIiByeD0iMyIgcnk9IjQiIGZpbGw9IndoaXRlIiBvcGFjaXR5PSIuMzUiIHRyYW5zZm9ybT0icm90YXRlKC0yMCAyNiAzMCkiLz48L3N2Zz4=">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#ffffff">
-  <title>Sprinkl</title>
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Sprinqua — {{.S.settings_title}}</title>
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body class="bg-slate-100 min-h-screen">
 
@@ -14,57 +19,291 @@
     <div class="max-w-2xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
         <span class="text-xl">💧</span>
-        <h1 class="text-base font-bold text-slate-800 leading-none">Sprinkl</h1>
+        <h1 class="text-base font-bold text-slate-800 leading-none">Sprinqua</h1>
       </div>
-      <a href="/dashboard" class="text-xs text-slate-400 hover:text-slate-600 transition-colors p-2 -mr-2 rounded-lg">
-        ← Dashboard
-      </a>
+      <div class="flex items-center gap-0.5">
+        <a href="/dashboard"
+          class="text-xs px-2 py-2 rounded-lg transition-colors {{if eq .ActiveTab "zones"}}font-bold text-slate-800{{else}}text-slate-400 hover:text-slate-600{{end}}">
+          {{.S.zones_title}}
+        </a>
+        <a href="/history"
+          class="text-xs px-2 py-2 rounded-lg transition-colors {{if eq .ActiveTab "history"}}font-bold text-slate-800{{else}}text-slate-400 hover:text-slate-600{{end}}">
+          {{.S.nav_history}}
+        </a>
+        <a href="/schedule"
+          class="text-xs px-2 py-2 rounded-lg transition-colors {{if eq .ActiveTab "schedule"}}font-bold text-slate-800{{else}}text-slate-400 hover:text-slate-600{{end}}">
+          {{.S.nav_schedule}}
+        </a>
+        <a href="/setup"
+          class="text-xs px-2 py-2 rounded-lg transition-colors {{if eq .ActiveTab "setup"}}font-bold text-slate-800{{else}}text-slate-400 hover:text-slate-600{{end}}">
+          {{.S.nav_setup}}
+        </a>
+      </div>
     </div>
   </header>
 
   <main class="max-w-2xl mx-auto px-4 sm:px-6 py-5">
-    <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-8">
 
-      <h2 class="text-lg font-semibold text-slate-800 mb-6">{{.S.settings_title}}</h2>
+    <!-- Preferences -->
+    <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">{{.S.settings_prefs_title}}</h2>
+    <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 mb-6">
+      <form method="POST" action="/setup/save">
 
-      <form method="POST" action="/settings">
+        <!-- Language -->
+        <div class="mb-5">
+          <label class="block text-xs font-medium text-slate-500 mb-2">{{.S.settings_lang_label}}</label>
+          <select onchange="location.href='/lang/'+this.value"
+            class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent cursor-pointer">
+            {{range .SupportedLangs}}
+            <option value="{{.Code}}" {{if eq $.Lang .Code}}selected{{end}}>{{.Label}}</option>
+            {{end}}
+          </select>
+        </div>
 
-        <!-- Time format -->
-        <div class="mb-8">
-          <label class="block text-xs font-medium text-slate-500 mb-3">{{.S.settings_time_format}}</label>
-          <div class="flex gap-3">
+        <!-- Clock format -->
+        <div class="mb-5">
+          <label class="block text-xs font-medium text-slate-500 mb-2">{{.S.step4_time_label}}</label>
+          <div class="flex gap-2">
             <label class="cursor-pointer flex-1">
               <input type="radio" name="time_format" value="24h" class="sr-only peer"
                 {{if ne .TimeFormat "12h"}}checked{{end}}>
-              <div class="flex items-center justify-center h-12 rounded-xl border-2 text-sm font-semibold transition-colors
+              <div class="flex items-center justify-center h-11 rounded-xl border-2 text-sm font-semibold transition-colors
                 border-slate-200 text-slate-500
                 peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-checked:text-emerald-700">
-                {{.S.settings_24h}}
-                <span class="ml-1.5 text-xs font-normal opacity-60">14:30</span>
+                24h&nbsp;<span class="text-xs font-normal opacity-60">14:30</span>
               </div>
             </label>
             <label class="cursor-pointer flex-1">
               <input type="radio" name="time_format" value="12h" class="sr-only peer"
                 {{if eq .TimeFormat "12h"}}checked{{end}}>
-              <div class="flex items-center justify-center h-12 rounded-xl border-2 text-sm font-semibold transition-colors
+              <div class="flex items-center justify-center h-11 rounded-xl border-2 text-sm font-semibold transition-colors
                 border-slate-200 text-slate-500
                 peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-checked:text-emerald-700">
-                {{.S.settings_12h}}
-                <span class="ml-1.5 text-xs font-normal opacity-60">2:30 PM</span>
+                12h&nbsp;<span class="text-xs font-normal opacity-60">2:30 PM</span>
               </div>
             </label>
           </div>
         </div>
 
+        <!-- Exclusive zone mode -->
+        <div class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-4 bg-slate-50 mb-4">
+          <div class="pr-4">
+            <p class="text-sm font-medium text-slate-700">{{.S.settings_exclusive_label}}</p>
+            <p class="text-xs text-slate-400 mt-0.5">{{.S.settings_exclusive_desc}}</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+            <input type="checkbox" name="exclusive_mode" value="1" class="sr-only peer"
+              {{if .ExclusiveMode}}checked{{end}}>
+            <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-emerald-600
+              after:content-[''] after:absolute after:top-0.5 after:left-0.5
+              after:bg-white after:rounded-full after:h-5 after:w-5
+              after:transition-all peer-checked:after:translate-x-5"></div>
+          </label>
+        </div>
+
+        <!-- MQTT -->
+        <div class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-4 bg-slate-50 mb-4">
+          <div class="pr-4">
+            <p class="text-sm font-medium text-slate-700">{{.S.step4_toggle_label}}</p>
+            <p class="text-xs text-slate-400 mt-0.5">{{.S.step4_toggle_desc}}</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+            <input type="checkbox" name="mqtt_enabled" value="1" class="sr-only peer"
+              {{if .MQTT.Enabled}}checked{{end}}
+              onchange="document.getElementById('mqtt-fields').classList.toggle('hidden', !this.checked)">
+            <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-emerald-600
+              after:content-[''] after:absolute after:top-0.5 after:left-0.5
+              after:bg-white after:rounded-full after:h-5 after:w-5
+              after:transition-all peer-checked:after:translate-x-5"></div>
+          </label>
+        </div>
+
+        <div id="mqtt-fields" class="space-y-3 mb-5{{if not .MQTT.Enabled}} hidden{{end}}">
+          <div>
+            <label class="block text-xs font-medium text-slate-500 mb-1">{{.S.step4_broker}}</label>
+            <input type="text" name="mqtt_broker" value="{{.MQTT.Broker}}" placeholder="192.168.1.x"
+              autocomplete="off" inputmode="url"
+              class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">{{.S.step4_port}}</label>
+              <input type="number" name="mqtt_port" value="{{if .MQTT.Port}}{{.MQTT.Port}}{{else}}1883{{end}}"
+                inputmode="numeric"
+                class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">{{.S.step4_prefix}}</label>
+              <input type="text" name="mqtt_prefix" value="{{if .MQTT.Prefix}}{{.MQTT.Prefix}}{{else}}sprinqua{{end}}"
+                autocomplete="off"
+                class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">{{.S.step4_user}}</label>
+              <input type="text" name="mqtt_user" value="{{.MQTT.Username}}" autocomplete="off"
+                class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">{{.S.step4_pass}}</label>
+              <input type="password" name="mqtt_pass" value="{{.MQTT.Password}}" autocomplete="new-password"
+                class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+            </div>
+          </div>
+
+          <!-- Control mode -->
+          <div>
+            <p class="text-xs font-medium text-slate-500 mb-2">{{.S.mqtt_mode_label}}</p>
+            <div class="space-y-2">
+              <label class="flex items-start gap-3 rounded-xl border-2 px-4 py-3 cursor-pointer transition-colors
+                {{if ne .MQTT.Mode "passive"}}border-emerald-400 bg-emerald-50{{else}}border-slate-200 bg-white hover:border-slate-300{{end}}">
+                <input type="radio" name="mqtt_mode" value="active" class="mt-0.5 accent-emerald-600"
+                  {{if ne .MQTT.Mode "passive"}}checked{{end}}>
+                <div>
+                  <p class="text-sm font-semibold text-slate-800">{{.S.mqtt_mode_active}}</p>
+                  <p class="text-xs text-slate-400 mt-0.5">{{.S.mqtt_mode_active_desc}}</p>
+                </div>
+              </label>
+              <label class="flex items-start gap-3 rounded-xl border-2 px-4 py-3 cursor-pointer transition-colors
+                {{if eq .MQTT.Mode "passive"}}border-amber-400 bg-amber-50{{else}}border-slate-200 bg-white hover:border-slate-300{{end}}">
+                <input type="radio" name="mqtt_mode" value="passive" class="mt-0.5 accent-amber-500"
+                  {{if eq .MQTT.Mode "passive"}}checked{{end}}>
+                <div>
+                  <p class="text-sm font-semibold text-slate-800">{{.S.mqtt_mode_passive}}</p>
+                  <p class="text-xs text-slate-400 mt-0.5">{{.S.mqtt_mode_passive_desc}}</p>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Smart Watering -->
+        <div class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-4 bg-slate-50 mb-4">
+          <div class="pr-4">
+            <p class="text-sm font-medium text-slate-700">🌦 {{.S.smart_watering_title}}</p>
+            <p class="text-xs text-slate-400 mt-0.5">{{.S.smart_watering_desc}}</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+            <input type="checkbox" name="sw_enabled" value="1" class="sr-only peer"
+              {{if .SmartWatering.Enabled}}checked{{end}}
+              onchange="swToggle(this.checked)">
+            <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-emerald-600
+              after:content-[''] after:absolute after:top-0.5 after:left-0.5
+              after:bg-white after:rounded-full after:h-5 after:w-5
+              after:transition-all peer-checked:after:translate-x-5"></div>
+          </label>
+        </div>
+
+        <div id="sw-fields" class="space-y-3 mb-5{{if not .SmartWatering.Enabled}} hidden{{end}}">
+          <!-- Weather status -->
+          <div id="sw-status" hx-get="/api/weather" hx-trigger="load" hx-swap="outerHTML">
+            <div class="h-14 rounded-xl bg-slate-100 animate-pulse"></div>
+          </div>
+
+          <!-- Map picker -->
+          <div id="sw-map" class="w-full rounded-xl overflow-hidden border border-slate-300" style="height:220px"></div>
+          <p class="text-xs text-slate-400 -mt-1">📍 {{.S.smart_watering_map_hint}}</p>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">{{.S.smart_watering_lat}}</label>
+              <input type="number" id="sw_lat" name="sw_lat" value="{{.SmartWatering.Lat}}" step="0.0001"
+                inputmode="decimal" placeholder="38.7169"
+                class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">{{.S.smart_watering_lon}}</label>
+              <input type="number" id="sw_lon" name="sw_lon" value="{{.SmartWatering.Lon}}" step="0.0001"
+                inputmode="decimal" placeholder="-9.1395"
+                class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-500 mb-1">{{.S.smart_watering_threshold}}</label>
+            <input type="number" name="sw_threshold" value="{{.SmartWatering.RainThresholdMM}}" step="0.5" min="0.5"
+              inputmode="decimal"
+              class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+          </div>
+        </div>
+
         <button type="submit"
-          class="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white
-                 font-semibold py-3 px-4 rounded-xl transition-colors text-sm">
+          class="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold py-3 px-4 rounded-xl transition-colors text-sm">
           {{.S.settings_save}}
         </button>
-
       </form>
     </div>
+
+    <!-- Hardware -->
+    <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">{{.S.settings_hw_title}}</h2>
+    <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6">
+      {{if .SetupDone}}
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0">
+          <span class="text-lg">🔌</span>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-slate-800">{{.BoardName}}</p>
+          <p class="text-xs text-slate-400">{{.ZoneCount}} {{.S.settings_hw_zones}}</p>
+        </div>
+      </div>
+      {{else}}
+      <p class="text-sm text-slate-500 mb-4">{{.S.settings_hw_not_done}}</p>
+      {{end}}
+      <p class="text-xs text-slate-400 mb-3">{{.S.settings_reset_desc}}</p>
+      <form method="POST" action="/setup/reset"
+        onsubmit="return confirm('{{.S.settings_reset_confirm}}')">
+        <button type="submit"
+          class="w-full border-2 border-red-200 text-red-600 hover:bg-red-50 active:bg-red-100 font-semibold py-3 px-4 rounded-xl transition-colors text-sm">
+          {{.S.settings_reset_btn}}
+        </button>
+      </form>
+    </div>
+
   </main>
+
+<script>
+  var _swMap, _swMarker;
+
+  (function() {
+    var initLat = {{.SmartWatering.Lat}};
+    var initLon = {{.SmartWatering.Lon}};
+    var hasPos = initLat !== 0 || initLon !== 0;
+    var centerLat = hasPos ? initLat : 39.5;
+    var centerLon = hasPos ? initLon : -8.0;
+    var zoom = hasPos ? 11 : 6;
+
+    _swMap = L.map('sw-map').setView([centerLat, centerLon], zoom);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+      maxZoom: 18
+    }).addTo(_swMap);
+
+    if (hasPos) {
+      _swMarker = L.marker([initLat, initLon]).addTo(_swMap);
+    }
+
+    _swMap.on('click', function(e) {
+      var lat = e.latlng.lat.toFixed(4);
+      var lon = e.latlng.lng.toFixed(4);
+      document.getElementById('sw_lat').value = lat;
+      document.getElementById('sw_lon').value = lon;
+      if (_swMarker) {
+        _swMarker.setLatLng(e.latlng);
+      } else {
+        _swMarker = L.marker(e.latlng).addTo(_swMap);
+      }
+    });
+  })();
+
+  function swToggle(checked) {
+    document.getElementById('sw-fields').classList.toggle('hidden', !checked);
+    if (checked) {
+      if (_swMap) setTimeout(function() { _swMap.invalidateSize(); }, 50);
+      htmx.ajax('GET', '/api/weather', {target: '#sw-status', swap: 'outerHTML'});
+    }
+  }
+</script>
 
 </body>
 </html>

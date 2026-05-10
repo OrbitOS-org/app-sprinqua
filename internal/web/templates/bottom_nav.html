@@ -1,0 +1,36 @@
+{{define "bottom_nav"}}
+<nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-20"
+     style="padding-bottom: env(safe-area-inset-bottom)">
+  <div class="max-w-2xl mx-auto flex items-stretch h-16">
+
+    <a href="/dashboard" class="relative flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors
+      {{if eq .ActiveTab "zones"}}text-emerald-600{{else}}text-slate-400 hover:text-slate-600{{end}}">
+      {{if eq .ActiveTab "zones"}}<div class="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-emerald-500 rounded-full"></div>{{end}}
+      <span class="text-lg leading-none">💧</span>
+      <span class="text-[10px] font-semibold leading-none">{{.S.zones_title}}</span>
+    </a>
+
+    <a href="/history" class="relative flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors
+      {{if eq .ActiveTab "history"}}text-emerald-600{{else}}text-slate-400 hover:text-slate-600{{end}}">
+      {{if eq .ActiveTab "history"}}<div class="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-emerald-500 rounded-full"></div>{{end}}
+      <span class="text-lg leading-none">📋</span>
+      <span class="text-[10px] font-semibold leading-none">{{.S.nav_history}}</span>
+    </a>
+
+    <a href="/schedule" class="relative flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors
+      {{if eq .ActiveTab "schedule"}}text-emerald-600{{else}}text-slate-400 hover:text-slate-600{{end}}">
+      {{if eq .ActiveTab "schedule"}}<div class="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-emerald-500 rounded-full"></div>{{end}}
+      <span class="text-lg leading-none">🗓</span>
+      <span class="text-[10px] font-semibold leading-none">{{.S.nav_schedule}}</span>
+    </a>
+
+    <a href="/setup" class="relative flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors
+      {{if eq .ActiveTab "setup"}}text-emerald-600{{else}}text-slate-400 hover:text-slate-600{{end}}">
+      {{if eq .ActiveTab "setup"}}<div class="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-emerald-500 rounded-full"></div>{{end}}
+      <span class="text-lg leading-none">⚙</span>
+      <span class="text-[10px] font-semibold leading-none">Setup</span>
+    </a>
+
+  </div>
+</nav>
+{{end}}

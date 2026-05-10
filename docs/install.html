@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Install Sprinqua — Getting Started</title>
+  <meta name="description" content="How to install Sprinqua on your Raspberry Pi running Orbit OS. Step-by-step guide: install the .orb package, open the web UI, and configure your relay board.">
+  <link rel="canonical" href="https://www.sprinqua.com/install.html">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .gradient-hero { background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f4c35 100%); }
+    .step-line::before {
+      content: '';
+      position: absolute;
+      left: 23px;
+      top: 48px;
+      bottom: -24px;
+      width: 2px;
+      background: #e2e8f0;
+    }
+  </style>
+</head>
+<body class="bg-white text-slate-800 antialiased">
+
+  <!-- Nav -->
+  <nav class="fixed top-0 w-full z-50 bg-white/80 backdrop-blur border-b border-slate-200">
+    <div class="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
+      <a href="index.html" class="flex items-center gap-2">
+        <span class="text-xl">💧</span>
+        <span class="font-bold text-slate-900 text-base">Sprinqua</span>
+      </a>
+      <div class="flex items-center gap-6">
+        <a href="index.html#features" class="text-sm text-slate-500 hover:text-slate-900 transition-colors hidden sm:block">Features</a>
+        <a href="index.html#boards" class="text-sm text-slate-500 hover:text-slate-900 transition-colors hidden sm:block">Boards</a>
+        <a href="index.html#ha" class="text-sm text-slate-500 hover:text-slate-900 transition-colors hidden sm:block">Home&nbsp;Assistant</a>
+        <a href="install.html" class="text-sm font-semibold text-emerald-600 hidden sm:block">Install</a>
+        <div class="hidden sm:flex items-center gap-2">
+          <a href="https://orbit-os.org" class="hidden sm:inline-flex items-center bg-slate-900 px-2 h-8 rounded-full hover:bg-slate-700 transition-colors">
+            <img src="site_img/orbitos.png" alt="Orbit OS" class="h-5 object-contain">
+          </a>
+          <a href="https://github.com/OrbitOS-org/sprinqua" class="flex items-center gap-1.5 text-sm font-medium bg-slate-900 text-white px-4 py-1.5 rounded-full hover:bg-slate-700 transition-colors">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+            GitHub
+          </a>
+        </div>
+        <select onchange="setLang(this.value)" id="lang-sel" class="text-xs text-slate-500 border border-slate-200 rounded-lg px-2 py-1 bg-white cursor-pointer focus:outline-none hidden sm:block">
+          <option value="en">EN</option>
+          <option value="pt">PT</option>
+          <option value="es">ES</option>
+          <option value="fr">FR</option>
+          <option value="de">DE</option>
+          <option value="it">IT</option>
+        </select>
+        <button id="menu-btn" onclick="toggleMenu()" class="sm:hidden -mr-1 p-2 text-slate-600 hover:text-slate-900 transition-colors" aria-label="Menu">
+          <svg id="icon-open" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+          <svg id="icon-close" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+    <div id="mobile-menu" class="hidden sm:hidden bg-white border-b border-slate-200">
+      <div class="max-w-5xl mx-auto px-6 py-4 flex flex-col gap-1">
+        <a href="index.html#features" data-i18n="nav_features" onclick="closeMenu()" class="text-sm text-slate-700 hover:text-slate-900 py-2 border-b border-slate-100">Features</a>
+        <a href="index.html#boards" data-i18n="nav_boards" onclick="closeMenu()" class="text-sm text-slate-700 hover:text-slate-900 py-2 border-b border-slate-100">Boards</a>
+        <a href="index.html#ha" data-i18n="nav_ha" onclick="closeMenu()" class="text-sm text-slate-700 hover:text-slate-900 py-2 border-b border-slate-100">Home&#160;Assistant</a>
+        <a href="install.html" onclick="closeMenu()" class="text-sm text-slate-700 hover:text-slate-900 py-2 border-b border-slate-100">Install</a>
+        <div class="flex items-center gap-3 pt-3">
+          <a href="https://orbit-os.org" class="inline-flex items-center bg-slate-900 px-2 h-8 rounded-full hover:bg-slate-700 transition-colors">
+            <img src="site_img/orbitos.png" alt="Orbit OS" class="h-5 object-contain">
+          </a>
+          <a href="https://github.com/OrbitOS-org/sprinqua" class="inline-flex items-center gap-1.5 text-sm font-medium bg-slate-900 text-white px-4 py-1.5 rounded-full hover:bg-slate-700 transition-colors">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+            GitHub
+          </a>
+          <select onchange="setLang(this.value)" id="lang-sel-mobile" class="text-xs text-slate-500 border border-slate-200 rounded-lg px-2 py-1 bg-white cursor-pointer focus:outline-none ml-auto">
+            <option value="en">EN</option>
+            <option value="pt">PT</option>
+            <option value="es">ES</option>
+            <option value="fr">FR</option>
+            <option value="de">DE</option>
+            <option value="it">IT</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="gradient-hero pt-32 pb-16 px-6 text-center text-white">
+    <div class="max-w-2xl mx-auto">
+      <div class="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 text-sm font-medium mb-8">
+        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        Getting Started
+      </div>
+      <h1 class="text-4xl sm:text-5xl font-extrabold leading-tight mb-4">
+        Install Sprinqua
+      </h1>
+      <p class="text-lg text-slate-300 leading-relaxed">
+        From a fresh Raspberry Pi to a working irrigation controller in under 10 minutes.
+      </p>
+    </div>
+  </section>
+
+  <!-- Requirements -->
+  <section class="py-14 px-6 bg-slate-50 border-b border-slate-200">
+    <div class="max-w-3xl mx-auto">
+      <h2 class="text-xl font-bold text-slate-900 mb-6">Before you start</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+        <div class="bg-white rounded-2xl border border-slate-200 p-5">
+          <div class="text-2xl mb-3">🍓</div>
+          <h3 class="font-semibold text-slate-900 mb-1 text-sm">Raspberry Pi</h3>
+          <p class="text-xs text-slate-500 leading-relaxed">Any model with GPIO pins — Pi 3, 4, 5 or Zero 2 W. Must be running <strong>Orbit OS</strong>.</p>
+          <a href="https://www.orbit-os.org" class="inline-block mt-3 text-xs font-semibold text-emerald-600 hover:text-emerald-700">Get Orbit OS →</a>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 p-5">
+          <div class="text-2xl mb-3">🔌</div>
+          <h3 class="font-semibold text-slate-900 mb-1 text-sm">Relay Board</h3>
+          <p class="text-xs text-slate-500 leading-relaxed">A GPIO-controlled relay HAT. Sprinqua supports 7+ boards out of the box — from 3 to 8 channels.</p>
+          <a href="index.html#boards" class="inline-block mt-3 text-xs font-semibold text-emerald-600 hover:text-emerald-700">See supported boards →</a>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 p-5">
+          <div class="text-2xl mb-3">📱</div>
+          <h3 class="font-semibold text-slate-900 mb-1 text-sm">Browser</h3>
+          <p class="text-xs text-slate-500 leading-relaxed">Any modern browser on the same local network. No app install needed — Sprinqua is a web UI.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Steps -->
+  <section class="py-16 px-6 bg-white">
+    <div class="max-w-3xl mx-auto">
+      <h2 class="text-xl font-bold text-slate-900 mb-10">Installation steps</h2>
+
+      <div class="space-y-10">
+
+        <!-- Step 1 -->
+        <div class="relative flex gap-6 step-line">
+          <div class="flex-shrink-0 w-12 h-12 rounded-2xl bg-emerald-500 text-white font-bold text-lg flex items-center justify-center shadow-sm">1</div>
+          <div class="flex-1 pb-2">
+            <h3 class="font-semibold text-slate-900 text-lg mb-1">Install Orbit OS on your Raspberry Pi</h3>
+            <p class="text-slate-500 text-sm leading-relaxed mb-4">Download the Orbit OS installer and run it on your Raspberry Pi. It sets up the OS, the app runtime, and the store in one go. After installation, the device will automatically restart.</p>
+            <div class="bg-slate-900 rounded-xl px-5 py-4 font-mono text-sm text-slate-300 space-y-1 mb-4">
+              <p><span class="text-slate-500"># Download the installer</span></p>
+              <p><span class="text-slate-400">wget</span> <span class="text-emerald-400">https://orbit-os.org/orbit-os-26-installer.deb</span></p>
+              <p class="mt-3"><span class="text-slate-500"># Install it</span></p>
+              <p><span class="text-slate-400">sudo dpkg -i</span> <span class="text-emerald-400">orbit-os-26-installer.deb</span></p>
+            </div>
+            <a href="https://orbit-os.org/getting_started.html" class="inline-flex items-center gap-2 bg-slate-900 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-slate-700 transition-colors">
+              Orbit OS Getting Started →
+            </a>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="relative flex gap-6 step-line">
+          <div class="flex-shrink-0 w-12 h-12 rounded-2xl bg-emerald-500 text-white font-bold text-lg flex items-center justify-center shadow-sm">2</div>
+          <div class="flex-1 pb-2">
+            <h3 class="font-semibold text-slate-900 text-lg mb-1">Open the Orbit OS Launcher in your browser</h3>
+            <p class="text-slate-500 text-sm leading-relaxed mb-3">Open a browser on any device on the same network and navigate to your Raspberry Pi's address. The Orbit OS Launcher will open and ask for your username and password.</p>
+            <div class="bg-slate-900 rounded-xl px-5 py-4 font-mono text-sm text-slate-300 space-y-1 mb-4">
+              <p class="text-emerald-400">http://&lt;YOUR_DEVICE_IP&gt;</p>
+            </div>
+            <div class="bg-slate-900 rounded-xl px-5 py-4 font-mono text-sm text-slate-300 space-y-1">
+              <p><span class="text-slate-500"># Default login</span></p>
+              <p>User: <span class="text-emerald-400">admin</span></p>
+              <p>Password: <span class="text-emerald-400">admin</span></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="relative flex gap-6 step-line">
+          <div class="flex-shrink-0 w-12 h-12 rounded-2xl bg-emerald-500 text-white font-bold text-lg flex items-center justify-center shadow-sm">3</div>
+          <div class="flex-1 pb-2">
+            <h3 class="font-semibold text-slate-900 text-lg mb-1">Add your Orbit OS Store account</h3>
+            <p class="text-slate-500 text-sm leading-relaxed mb-3">In the launcher, click the <strong>Settings</strong> icon, go to <strong>Account</strong>, and sign in with your Orbit OS Store account. This allows you to install apps from the store.</p>
+            <div class="flex items-start gap-3 bg-slate-50 rounded-xl p-4 border border-slate-200">
+              <img src="site_img/settings_icon.svg" alt="Settings icon" width="36" height="36" class="rounded-lg flex-shrink-0">
+              <div>
+                <p class="text-sm font-semibold text-slate-800">Settings → Account</p>
+                <p class="text-xs text-slate-500 mt-0.5">Sign in with your Orbit OS Store credentials to enable app installation.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="relative flex gap-6 step-line">
+          <div class="flex-shrink-0 w-12 h-12 rounded-2xl bg-emerald-500 text-white font-bold text-lg flex items-center justify-center shadow-sm">4</div>
+          <div class="flex-1 pb-2">
+            <h3 class="font-semibold text-slate-900 text-lg mb-1">Install Sprinqua from the Orbit OS Store</h3>
+            <p class="text-slate-500 text-sm leading-relaxed mb-4">Open the Orbit OS Store and search for the <strong>Sprinqua</strong> application. Tap <strong>Install</strong>, select your device from the list, and confirm — Orbit OS will download and deploy it automatically.</p>
+            <div class="flex items-center gap-4 bg-slate-50 rounded-xl p-4 border border-slate-200 mb-4">
+              <img src="site_img/icon-64-light.svg" alt="Sprinqua icon" width="48" height="48" class="rounded-xl shadow-sm flex-shrink-0">
+              <div>
+                <p class="text-sm font-semibold text-slate-800 mb-1">Sprinqua</p>
+                <p class="text-xs text-slate-500">Find this icon in the store and tap it to open the app page.</p>
+              </div>
+            </div>
+            <a href="https://store.orbit-os.org" class="inline-flex flex-col bg-slate-900 hover:bg-slate-700 transition-colors rounded-2xl px-7 py-4 gap-1.5 w-fit">
+              <span class="text-slate-400 text-sm leading-none tracking-widest uppercase text-left">Get it on</span>
+              <span class="flex items-center gap-1">
+                <img src="site_img/orbitos.png" alt="Orbit OS" height="42" style="height:42px;width:auto;display:block;margin-left:-12px;">
+                <span class="text-white font-semibold text-2xl leading-none" style="margin-left:-10px;">Store</span>
+              </span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Step 5 -->
+        <div class="relative flex gap-6 step-line">
+          <div class="flex-shrink-0 w-12 h-12 rounded-2xl bg-emerald-500 text-white font-bold text-lg flex items-center justify-center shadow-sm">5</div>
+          <div class="flex-1 pb-2">
+            <h3 class="font-semibold text-slate-900 text-lg mb-1">Open Sprinqua from the launcher</h3>
+            <p class="text-slate-500 text-sm leading-relaxed mb-3">Go back to the Orbit OS Device Launcher at your device's address. Sprinqua is now installed — you will see its icon in the launcher. Tap it to open the app.</p>
+            <div class="bg-slate-900 rounded-xl px-5 py-4 font-mono text-sm text-slate-300 space-y-1 mb-4">
+              <p class="text-emerald-400">http://&lt;YOUR_DEVICE_IP&gt;</p>
+            </div>
+            <div class="flex items-center gap-4 bg-slate-50 rounded-xl p-4 border border-slate-200">
+              <img src="site_img/icon-64-light.svg" alt="Sprinqua icon" width="48" height="48" class="rounded-xl shadow-sm flex-shrink-0">
+              <div>
+                <p class="text-sm font-semibold text-slate-800">Sprinqua</p>
+                <p class="text-xs text-slate-500 mt-0.5">The icon is now visible in your launcher. Tap it to open the app.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 6 -->
+        <div class="relative flex gap-6 step-line">
+          <div class="flex-shrink-0 w-12 h-12 rounded-2xl bg-emerald-500 text-white font-bold text-lg flex items-center justify-center shadow-sm">6</div>
+          <div class="flex-1 pb-2">
+            <h3 class="font-semibold text-slate-900 text-lg mb-1">Run the Hardware Setup Wizard</h3>
+            <p class="text-slate-500 text-sm leading-relaxed mb-4">On first launch, Sprinqua shows the setup wizard. It walks you through three quick steps:</p>
+            <div class="space-y-3">
+              <div class="flex items-start gap-3 bg-slate-50 rounded-xl p-4">
+                <div class="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">A</div>
+                <div>
+                  <p class="text-sm font-semibold text-slate-800">Select your relay board</p>
+                  <p class="text-xs text-slate-500 mt-0.5">Pick your exact board model from the list. Sprinqua auto-fills the correct GPIO pin mapping.</p>
+                </div>
+              </div>
+              <div class="flex items-start gap-3 bg-slate-50 rounded-xl p-4">
+                <div class="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">B</div>
+                <div>
+                  <p class="text-sm font-semibold text-slate-800">Name your irrigation zones</p>
+                  <p class="text-xs text-slate-500 mt-0.5">Assign a name and type (sprinkler, drip, mist…) to each relay channel. Set a safety auto-off limit per zone.</p>
+                </div>
+              </div>
+              <div class="flex items-start gap-3 bg-slate-50 rounded-xl p-4">
+                <div class="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">C</div>
+                <div>
+                  <p class="text-sm font-semibold text-slate-800">Test each relay</p>
+                  <p class="text-xs text-slate-500 mt-0.5">Pulse each relay for 3 seconds to verify the physical wiring before committing to the configuration.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 7 -->
+        <div class="relative flex gap-6">
+          <div class="flex-shrink-0 w-12 h-12 rounded-2xl bg-emerald-500 text-white font-bold text-lg flex items-center justify-center shadow-sm">7</div>
+          <div class="flex-1">
+            <h3 class="font-semibold text-slate-900 text-lg mb-1">Start watering 💧</h3>
+            <p class="text-slate-500 text-sm leading-relaxed">You're done. Turn zones on manually, create weekly schedules, enable Smart Watering to skip rainy days, or connect to Home&nbsp;Assistant via MQTT. All from the same clean UI.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Home Assistant optional -->
+  <section class="py-14 px-6 bg-slate-50 border-t border-slate-200">
+    <div class="max-w-3xl mx-auto">
+      <h2 class="text-xl font-bold text-slate-900 mb-6">Optional: Connect to Home&nbsp;Assistant</h2>
+      <p class="text-slate-500 text-sm leading-relaxed mb-6">If you use Home&nbsp;Assistant, Sprinqua can publish all zones as MQTT switches with auto-discovery — no manual entity configuration needed.</p>
+      <div class="bg-slate-900 rounded-xl px-5 py-5 font-mono text-sm text-slate-300 space-y-1 mb-6">
+        <p><span class="text-slate-500"># In Sprinqua → Settings → Enable MQTT</span></p>
+        <p>Broker: <span class="text-emerald-400">192.168.1.x</span>  <span class="text-slate-500"># your HA host</span></p>
+        <p>Port: <span class="text-emerald-400">1883</span></p>
+        <p>Prefix: <span class="text-emerald-400">sprinqua</span>  <span class="text-slate-500"># topic prefix</span></p>
+        <p class="mt-3 text-slate-500"># Topics Sprinqua publishes</p>
+        <p><span class="text-emerald-400">sprinqua/zone/1/state</span> → ON | OFF</p>
+        <p><span class="text-emerald-400">sprinqua/mode/state</span>  → Standalone | HA-Managed</p>
+      </div>
+      <div class="flex flex-wrap gap-3">
+        <a href="index.html#ha" class="text-sm font-semibold text-emerald-600 hover:text-emerald-700 transition-colors">
+          See full MQTT documentation →
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Troubleshooting -->
+  <section class="py-14 px-6 bg-white border-t border-slate-200">
+    <div class="max-w-3xl mx-auto">
+      <h2 class="text-xl font-bold text-slate-900 mb-6">Troubleshooting</h2>
+      <div class="space-y-4">
+
+        <details class="bg-slate-50 rounded-2xl border border-slate-200 group">
+          <summary class="px-5 py-4 text-sm font-semibold text-slate-800 cursor-pointer list-none flex items-center justify-between">
+            Can't reach the web UI
+            <span class="text-slate-400 group-open:rotate-180 transition-transform">▾</span>
+          </summary>
+          <div class="px-5 pb-4 text-sm text-slate-500 leading-relaxed">
+            Make sure your computer and the Raspberry Pi are on the same local network. Try using the device's IP address instead of the hostname. Check the Orbit OS dashboard to confirm Sprinqua is running.
+          </div>
+        </details>
+
+        <details class="bg-slate-50 rounded-2xl border border-slate-200 group">
+          <summary class="px-5 py-4 text-sm font-semibold text-slate-800 cursor-pointer list-none flex items-center justify-between">
+            Relay fires but nothing happens physically
+            <span class="text-slate-400 group-open:rotate-180 transition-transform">▾</span>
+          </summary>
+          <div class="px-5 pb-4 text-sm text-slate-500 leading-relaxed">
+            Check that the relay board is powered (many boards need an external 5V supply in addition to GPIO). Verify that the COM/NO/NC wiring is correct for your valve type. The relay click sound confirms GPIO is working — the issue is downstream.
+          </div>
+        </details>
+
+        <details class="bg-slate-50 rounded-2xl border border-slate-200 group">
+          <summary class="px-5 py-4 text-sm font-semibold text-slate-800 cursor-pointer list-none flex items-center justify-between">
+            Wrong relay fires (GPIO mismatch)
+            <span class="text-slate-400 group-open:rotate-180 transition-transform">▾</span>
+          </summary>
+          <div class="px-5 pb-4 text-sm text-slate-500 leading-relaxed">
+            Make sure you selected the exact board model in the wizard. Different board revisions sometimes use different GPIO layouts. Use Settings → Re-run Hardware Wizard to reconfigure. If your board isn't listed, <a href="https://github.com/OrbitOS-org/sprinqua/issues/new?title=Board+support+request" class="text-emerald-600 hover:underline">open a board request</a>.
+          </div>
+        </details>
+
+        <details class="bg-slate-50 rounded-2xl border border-slate-200 group">
+          <summary class="px-5 py-4 text-sm font-semibold text-slate-800 cursor-pointer list-none flex items-center justify-between">
+            Smart Watering not skipping
+            <span class="text-slate-400 group-open:rotate-180 transition-term">▾</span>
+          </summary>
+          <div class="px-5 pb-4 text-sm text-slate-500 leading-relaxed">
+            Confirm that Smart Watering is enabled in Settings and that your location coordinates are set. The check runs ~1 hour before a scheduled run. Open-Meteo requires internet access from the Raspberry Pi — verify the device can reach the internet.
+          </div>
+        </details>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="py-16 px-6 bg-slate-900 text-white text-center">
+    <div class="max-w-xl mx-auto">
+      <div class="text-4xl mb-5">💧</div>
+      <h2 class="text-2xl font-bold mb-3">Something not working?</h2>
+      <p class="text-slate-400 mb-7 leading-relaxed">Open an issue on GitHub and we'll help you sort it out. Feature requests and board additions are also welcome.</p>
+      <div class="flex flex-col sm:flex-row gap-3 justify-center">
+        <a href="https://github.com/OrbitOS-org/sprinqua/issues" class="flex items-center justify-center gap-2 bg-white text-slate-900 font-semibold px-6 py-3 rounded-xl hover:bg-slate-100 transition-colors">
+          Open an Issue on GitHub
+        </a>
+        <a href="index.html" class="flex items-center justify-center gap-2 bg-white/10 border border-white/20 text-white font-semibold px-6 py-3 rounded-xl hover:bg-white/20 transition-colors">
+          ← Back to Overview
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="py-8 px-6 border-t border-slate-200 bg-white">
+    <div class="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-slate-400">
+      <div class="flex items-center gap-2">
+        <span>💧</span>
+        <span class="font-semibold text-slate-600">Sprinqua</span>
+        <span>· GPL-3.0 License</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <span class="text-slate-400">Built for</span>
+        <a href="https://orbit-os.org" class="flex items-center hover:opacity-80 transition-opacity">
+          <span class="bg-slate-900 rounded-lg px-2.5 py-1.5 flex items-center">
+            <img src="site_img/orbitos.png" alt="Orbit OS" class="h-5 object-contain">
+          </span>
+        </a>
+        <a href="https://github.com/OrbitOS-org/sprinqua" class="text-slate-500 hover:text-slate-800 transition-colors">GitHub</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    function setLang(val) {
+      localStorage.setItem('sprinqua_lang', val);
+      var url = new URL(window.location.href);
+      url.searchParams.set('lang', val);
+      history.replaceState(null, '', url.toString());
+      ['lang-sel','lang-sel-mobile'].forEach(function(id){
+        var el = document.getElementById(id); if (el) el.value = val;
+      });
+    }
+    function toggleMenu() {
+      var m = document.getElementById('mobile-menu');
+      var o = document.getElementById('icon-open');
+      var c = document.getElementById('icon-close');
+      m.classList.toggle('hidden');
+      o.classList.toggle('hidden');
+      c.classList.toggle('hidden');
+    }
+    function closeMenu() {
+      document.getElementById('mobile-menu').classList.add('hidden');
+      document.getElementById('icon-open').classList.remove('hidden');
+      document.getElementById('icon-close').classList.add('hidden');
+    }
+    // restore persisted lang on load
+    (function(){
+      var p = new URLSearchParams(window.location.search);
+      var lang = p.get('lang') || localStorage.getItem('sprinqua_lang') || 'en';
+      ['lang-sel','lang-sel-mobile'].forEach(function(id){
+        var el = document.getElementById(id); if (el) el.value = lang;
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,1344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sprinqua — Smart Irrigation Controller</title>
+  <meta name="description" id="meta-desc" content="Open-source irrigation controller for Raspberry Pi. Schedule watering zones, skip rainy days with Smart Watering, and integrate with Home Assistant via MQTT. No cloud required.">
+  <link rel="alternate" hreflang="en"        href="https://www.sprinqua.com/?lang=en">
+  <link rel="alternate" hreflang="pt"        href="https://www.sprinqua.com/?lang=pt">
+  <link rel="alternate" hreflang="es"        href="https://www.sprinqua.com/?lang=es">
+  <link rel="alternate" hreflang="fr"        href="https://www.sprinqua.com/?lang=fr">
+  <link rel="alternate" hreflang="de"        href="https://www.sprinqua.com/?lang=de">
+  <link rel="alternate" hreflang="it"        href="https://www.sprinqua.com/?lang=it">
+  <link rel="alternate" hreflang="x-default" href="https://www.sprinqua.com/">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .gradient-hero { background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f4c35 100%); }
+    .card-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .card-hover:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.12); }
+    .feature-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  </style>
+</head>
+<body class="bg-white text-slate-800 antialiased">
+
+  <!-- Nav -->
+  <nav class="fixed top-0 w-full z-50 bg-white/80 backdrop-blur border-b border-slate-200">
+    <div class="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-xl">💧</span>
+        <span class="font-bold text-slate-900 text-base">Sprinqua</span>
+      </div>
+      <div class="flex items-center gap-6">
+        <a href="#features" data-i18n="nav_features" class="text-sm text-slate-500 hover:text-slate-900 transition-colors hidden sm:block">Features</a>
+        <a href="#boards" data-i18n="nav_boards" class="text-sm text-slate-500 hover:text-slate-900 transition-colors hidden sm:block">Boards</a>
+        <a href="#ha" data-i18n="nav_ha" class="text-sm text-slate-500 hover:text-slate-900 transition-colors hidden sm:block">Home Assistant</a>
+        <a href="install.html" class="text-sm text-slate-500 hover:text-slate-900 transition-colors hidden sm:block">Install</a>
+        <div class="hidden sm:flex items-center gap-2">
+          <a href="https://orbit-os.org" class="hidden sm:inline-flex items-center bg-slate-900 px-2 h-8 rounded-full hover:bg-slate-700 transition-colors">
+            <img src="site_img/orbitos.png" alt="Orbit OS" class="h-5 object-contain">
+          </a>
+          <a href="https://github.com/OrbitOS-org/sprinqua" class="flex items-center gap-1.5 text-sm font-medium bg-slate-900 text-white px-4 py-1.5 rounded-full hover:bg-slate-700 transition-colors">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+            GitHub
+          </a>
+        </div>
+        <select onchange="setLang(this.value)" id="lang-sel" class="text-xs text-slate-500 border border-slate-200 rounded-lg px-2 py-1 bg-white cursor-pointer focus:outline-none hidden sm:block">
+          <option value="en">EN</option>
+          <option value="pt">PT</option>
+          <option value="es">ES</option>
+          <option value="fr">FR</option>
+          <option value="de">DE</option>
+          <option value="it">IT</option>
+        </select>
+        <button id="menu-btn" onclick="toggleMenu()" class="sm:hidden -mr-1 p-2 text-slate-600 hover:text-slate-900 transition-colors" aria-label="Menu">
+          <svg id="icon-open" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+          <svg id="icon-close" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+    <div id="mobile-menu" class="hidden sm:hidden bg-white border-b border-slate-200">
+      <div class="max-w-5xl mx-auto px-6 py-4 flex flex-col gap-1">
+        <a href="#features" data-i18n="nav_features" onclick="closeMenu()" class="text-sm text-slate-700 hover:text-slate-900 py-2 border-b border-slate-100">Features</a>
+        <a href="#boards" data-i18n="nav_boards" onclick="closeMenu()" class="text-sm text-slate-700 hover:text-slate-900 py-2 border-b border-slate-100">Boards</a>
+        <a href="#ha" data-i18n="nav_ha" onclick="closeMenu()" class="text-sm text-slate-700 hover:text-slate-900 py-2 border-b border-slate-100">Home&#160;Assistant</a>
+        <a href="install.html" onclick="closeMenu()" class="text-sm text-slate-700 hover:text-slate-900 py-2 border-b border-slate-100">Install</a>
+        <div class="flex items-center gap-3 pt-3">
+          <a href="https://orbit-os.org" class="inline-flex items-center bg-slate-900 px-2 h-8 rounded-full hover:bg-slate-700 transition-colors">
+            <img src="site_img/orbitos.png" alt="Orbit OS" class="h-5 object-contain">
+          </a>
+          <a href="https://github.com/OrbitOS-org/sprinqua" class="inline-flex items-center gap-1.5 text-sm font-medium bg-slate-900 text-white px-4 py-1.5 rounded-full hover:bg-slate-700 transition-colors">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+            GitHub
+          </a>
+          <select onchange="setLang(this.value)" id="lang-sel-mobile" class="text-xs text-slate-500 border border-slate-200 rounded-lg px-2 py-1 bg-white cursor-pointer focus:outline-none ml-auto">
+            <option value="en">EN</option>
+            <option value="pt">PT</option>
+            <option value="es">ES</option>
+            <option value="fr">FR</option>
+            <option value="de">DE</option>
+            <option value="it">IT</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="gradient-hero pt-32 pb-24 px-6 text-center text-white">
+    <div class="max-w-3xl mx-auto">
+      <div class="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 text-sm font-medium mb-8">
+        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        Open Source · GPL-3.0 License
+      </div>
+      <h1 data-i18ni="hero_h1" class="text-5xl sm:text-6xl font-extrabold leading-tight mb-6">
+        Smart Irrigation<br>for Raspberry Pi
+      </h1>
+      <p data-i18n="hero_p" class="text-lg sm:text-xl text-slate-300 mb-10 max-w-2xl mx-auto leading-relaxed">
+        Sprinqua is a self-hosted irrigation controller that runs on Orbit OS. Schedule zones, skip watering when it rains, and integrate with Home Assistant — all from a clean web UI on your local network.
+      </p>
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+        <a href="https://github.com/OrbitOS-org/sprinqua" class="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white font-semibold px-6 py-3 rounded-xl transition-colors">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          <span data-i18n="hero_btn_github">Get Started on GitHub</span>
+        </a>
+        <a href="#features" class="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold px-6 py-3 rounded-xl transition-colors">
+          <span data-i18n="hero_btn_learn">See Features</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div class="max-w-2xl mx-auto mt-16 grid grid-cols-3 gap-4">
+      <div class="bg-white/10 border border-white/15 rounded-2xl px-4 py-5">
+        <p class="text-3xl font-bold text-white">6</p>
+        <p data-i18n="stat_languages" class="text-sm text-slate-400 mt-1">Languages</p>
+      </div>
+      <div class="bg-white/10 border border-white/15 rounded-2xl px-4 py-5">
+        <p class="text-3xl font-bold text-white">6+</p>
+        <p data-i18n="stat_boards" class="text-sm text-slate-400 mt-1">Relay Boards</p>
+      </div>
+      <div class="bg-white/10 border border-white/15 rounded-2xl px-4 py-5">
+        <p class="text-3xl font-bold text-white">0</p>
+        <p data-i18n="stat_cloud" class="text-sm text-slate-400 mt-1">Cloud Deps</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features" class="py-20 px-6 bg-slate-50">
+    <div class="max-w-5xl mx-auto">
+      <div class="text-center mb-14">
+        <h2 data-i18n="feat_h2" class="text-3xl font-bold text-slate-900 mb-3">Everything you need, nothing you don't</h2>
+        <p data-i18n="feat_h2_sub" class="text-slate-500 max-w-xl mx-auto">Runs entirely on your local network. No cloud account, no subscription, no data leaving your home.</p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 card-hover">
+          <div class="feature-icon bg-emerald-50 mb-4">💧</div>
+          <h3 data-i18n="feat_zones_h3" class="font-semibold text-slate-900 mb-1.5">Zone Control</h3>
+          <p data-i18n="feat_zones_p" class="text-sm text-slate-500 leading-relaxed">Turn zones on/off manually, run a 5-minute pulse, or let schedules handle everything. Safety auto-off per zone.</p>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 card-hover">
+          <div class="feature-icon bg-blue-50 mb-4">📅</div>
+          <h3 data-i18n="feat_sched_h3" class="font-semibold text-slate-900 mb-1.5">Flexible Scheduling</h3>
+          <p data-i18n="feat_sched_p" class="text-sm text-slate-500 leading-relaxed">Weekly schedules per zone with day-of-week selection, custom start time, and duration. Visual weekly overview chart.</p>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 card-hover">
+          <div class="feature-icon bg-sky-50 mb-4">🌦</div>
+          <h3 data-i18n="feat_smart_h3" class="font-semibold text-slate-900 mb-1.5">Smart Watering</h3>
+          <p data-i18n="feat_smart_p" class="text-sm text-slate-500 leading-relaxed">Integrates with Open-Meteo (free, no API key) to skip irrigation when rain is forecast above your threshold.</p>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 card-hover">
+          <div class="feature-icon bg-violet-50 mb-4">📊</div>
+          <h3 data-i18n="feat_hist_h3" class="font-semibold text-slate-900 mb-1.5">Activation History</h3>
+          <p data-i18n="feat_hist_p" class="text-sm text-slate-500 leading-relaxed">Full log of every run — manual, scheduled, MQTT, or skipped. 7-day stats, 24h timeline chart, and skipped-run visibility.</p>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 card-hover">
+          <div class="feature-icon bg-amber-50 mb-4"><img src="site_img/home-assistant.png" class="w-6 h-6 object-contain"></div>
+          <h3 data-i18n="feat_mqtt_h3" class="font-semibold text-slate-900 mb-1.5">MQTT &amp; Home Assistant</h3>
+          <p data-i18n="feat_mqtt_p" class="text-sm text-slate-500 leading-relaxed">Auto-discovery for all zones as HA switches. Choose Standalone or HA-Managed mode — switch live from HA itself.</p>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 card-hover">
+          <div class="feature-icon bg-rose-50 mb-4">🌍</div>
+          <h3 data-i18n="feat_i18n_h3" class="font-semibold text-slate-900 mb-1.5">6 Languages</h3>
+          <p data-i18n="feat_i18n_p" class="text-sm text-slate-500 leading-relaxed">Full UI in English, Portuguese, Spanish, French, German, and Italian. Language auto-detected or set manually.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Preview Demo -->
+  <section id="preview" class="py-20 px-6 bg-white">
+    <div class="max-w-5xl mx-auto">
+      <div class="text-center mb-10">
+        <h2 data-i18n="prev_h2" class="text-3xl font-bold text-slate-900 mb-3">Everything under control</h2>
+        <p data-i18n="prev_p" class="text-slate-500 max-w-lg mx-auto">A walkthrough of the Sprinqua app — from turning zones on and off, to scheduling automatic runs, tracking history, and tuning your setup. All from a clean mobile interface that runs entirely on your device.</p>
+      </div>
+
+      <!-- Tab buttons -->
+      <div class="flex justify-center gap-2 mb-10">
+        <button data-i18n="prev_tab_zones" onclick="demoTab('zones')" id="dtab-zones"
+          class="px-5 py-2 rounded-full text-sm font-semibold transition-all bg-slate-900 text-white shadow-sm">
+          💧 Zones
+        </button>
+        <button data-i18n="prev_tab_history" onclick="demoTab('history')" id="dtab-history"
+          class="px-5 py-2 rounded-full text-sm font-semibold transition-all bg-slate-100 text-slate-600 hover:bg-slate-200">
+          📋 History
+        </button>
+        <button data-i18n="prev_tab_schedule" onclick="demoTab('schedules')" id="dtab-schedules"
+          class="px-5 py-2 rounded-full text-sm font-semibold transition-all bg-slate-100 text-slate-600 hover:bg-slate-200">
+          🗓 Schedule
+        </button>
+        <button data-i18n="prev_tab_settings" onclick="demoTab('settings')" id="dtab-settings"
+          class="px-5 py-2 rounded-full text-sm font-semibold transition-all bg-slate-100 text-slate-600 hover:bg-slate-200">
+          ⚙ Settings
+        </button>
+      </div>
+
+      <!-- Phone frame -->
+      <div class="flex justify-center">
+        <div class="bg-slate-800 rounded-[44px] p-[10px] shadow-2xl shadow-slate-400/30 ring-1 ring-slate-700/50">
+          <div class="flex items-center justify-center h-6 mb-1">
+            <div class="bg-slate-700 w-20 h-3.5 rounded-full"></div>
+          </div>
+          <div class="bg-slate-100 rounded-[34px] overflow-hidden w-[340px] h-[650px] relative">
+
+            <!-- ══ ZONES SCREEN ══ -->
+            <div id="dscreen-zones" class="absolute inset-0 flex flex-col">
+              <header class="bg-white border-b border-slate-200 flex-shrink-0">
+                <div class="px-4 h-14 flex items-center justify-between">
+                  <div class="flex items-center gap-2"><span class="text-lg">💧</span><span class="text-sm font-bold text-slate-800">Sprinqua</span></div>
+                  <div class="flex items-center">
+                    <button onclick="demoTab('zones')" class="text-[11px] px-2 py-1 font-bold text-slate-800 cursor-pointer">Zones</button>
+                    <button onclick="demoTab('history')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">History</button>
+                    <button onclick="demoTab('schedules')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">Schedule</button>
+                    <button onclick="demoTab('settings')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">⚙</button>
+                  </div>
+                </div>
+              </header>
+              <main class="flex-1 overflow-y-auto px-3 py-4">
+                <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-3">Zones</p>
+                <div class="space-y-3">
+
+                  <!-- Zone 1 ACTIVE -->
+                  <div class="bg-white rounded-2xl border-2 border-emerald-400 shadow-sm shadow-emerald-100 p-4">
+                    <div class="flex items-start justify-between mb-3">
+                      <div>
+                        <div class="flex items-center gap-2">
+                          <div class="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
+                          <span class="text-sm font-semibold text-slate-800">Lawn</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 mt-1 ml-4">
+                          <span class="text-[10px] font-mono font-semibold text-white px-1.5 py-0.5 rounded" style="background:#10b981">CH1</span>
+                          <span class="text-[10px] text-slate-400">💦 Sprinkler</span>
+                        </div>
+                      </div>
+                      <span class="text-xs font-semibold px-2.5 py-1 rounded-full text-emerald-700 bg-emerald-50">ACTIVE</span>
+                    </div>
+                    <div class="flex items-center justify-between mb-2">
+                      <span id="demo-timer" class="text-emerald-600 text-sm font-mono font-semibold">⏱ 04:23</span>
+                      <span class="text-xs text-slate-400">max 20min</span>
+                    </div>
+                    <button class="w-full py-2.5 rounded-xl border-2 border-red-200 text-red-600 text-xs font-semibold">■ Turn Off</button>
+                  </div>
+
+                  <!-- Zone 2 INACTIVE -->
+                  <div class="bg-white rounded-2xl border-2 border-slate-200 p-4">
+                    <div class="flex items-start justify-between mb-3">
+                      <div>
+                        <div class="flex items-center gap-2">
+                          <div class="w-2.5 h-2.5 rounded-full bg-slate-300"></div>
+                          <span class="text-sm font-semibold text-slate-800">Vegetable Garden</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 mt-1 ml-4">
+                          <span class="text-[10px] font-mono font-semibold text-white px-1.5 py-0.5 rounded" style="background:#3b82f6">CH2</span>
+                          <span class="text-[10px] text-slate-400">🌱 Drip</span>
+                        </div>
+                      </div>
+                      <span class="text-xs font-semibold px-2.5 py-1 rounded-full text-slate-400 bg-slate-50">INACTIVE</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                      <button class="py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-semibold">▶ ON</button>
+                      <button class="py-2.5 rounded-xl border-2 border-amber-300 text-amber-700 text-xs font-semibold">⏱ 5 min</button>
+                    </div>
+                  </div>
+
+                  <!-- Zone 3 INACTIVE -->
+                  <div class="bg-white rounded-2xl border-2 border-slate-200 p-4">
+                    <div class="flex items-start justify-between mb-3">
+                      <div>
+                        <div class="flex items-center gap-2">
+                          <div class="w-2.5 h-2.5 rounded-full bg-slate-300"></div>
+                          <span class="text-sm font-semibold text-slate-800">Flower Bed</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 mt-1 ml-4">
+                          <span class="text-[10px] font-mono font-semibold text-white px-1.5 py-0.5 rounded" style="background:#8b5cf6">CH3</span>
+                          <span class="text-[10px] text-slate-400">🌫️ Mist</span>
+                        </div>
+                      </div>
+                      <span class="text-xs font-semibold px-2.5 py-1 rounded-full text-slate-400 bg-slate-50">INACTIVE</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                      <button class="py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-semibold">▶ ON</button>
+                      <button class="py-2.5 rounded-xl border-2 border-amber-300 text-amber-700 text-xs font-semibold">⏱ 5 min</button>
+                    </div>
+                  </div>
+
+                  <!-- Zone 4 INACTIVE -->
+                  <div class="bg-white rounded-2xl border-2 border-slate-200 p-4">
+                    <div class="flex items-start justify-between mb-3">
+                      <div>
+                        <div class="flex items-center gap-2">
+                          <div class="w-2.5 h-2.5 rounded-full bg-slate-300"></div>
+                          <span class="text-sm font-semibold text-slate-800">Balcony Pots</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 mt-1 ml-4">
+                          <span class="text-[10px] font-mono font-semibold text-white px-1.5 py-0.5 rounded" style="background:#f59e0b">CH4</span>
+                          <span class="text-[10px] text-slate-400">🌱 Drip</span>
+                        </div>
+                      </div>
+                      <span class="text-xs font-semibold px-2.5 py-1 rounded-full text-slate-400 bg-slate-50">INACTIVE</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                      <button class="py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-semibold">▶ ON</button>
+                      <button class="py-2.5 rounded-xl border-2 border-amber-300 text-amber-700 text-xs font-semibold">⏱ 5 min</button>
+                    </div>
+                  </div>
+
+                </div>
+              </main>
+              <div class="bg-slate-900 flex-shrink-0 flex items-center justify-around px-8 h-9">
+                <span class="text-white/40 text-sm leading-none">◁</span>
+                <span class="text-white/40 text-base leading-none">○</span>
+                <span class="text-white/40 text-sm leading-none">□</span>
+              </div>
+            </div>
+
+            <!-- ══ SCHEDULES SCREEN ══ -->
+            <div id="dscreen-schedules" class="absolute inset-0 flex flex-col hidden">
+              <header class="bg-white border-b border-slate-200 flex-shrink-0">
+                <div class="px-4 h-14 flex items-center justify-between">
+                  <div class="flex items-center gap-2"><span class="text-lg">💧</span><span class="text-sm font-bold text-slate-800">Sprinqua</span></div>
+                  <div class="flex items-center">
+                    <button onclick="demoTab('zones')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">Zones</button>
+                    <button onclick="demoTab('history')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">History</button>
+                    <button onclick="demoTab('schedules')" class="text-[11px] px-2 py-1 font-bold text-slate-800 cursor-pointer">Schedule</button>
+                    <button onclick="demoTab('settings')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">⚙</button>
+                  </div>
+                </div>
+              </header>
+              <main class="flex-1 overflow-y-auto px-3 py-4">
+                <div class="flex items-center justify-between mb-3">
+                  <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Schedules</p>
+                  <span class="text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg">+ New</span>
+                </div>
+
+                <!-- Schedule 1 enabled -->
+                <div class="bg-white rounded-2xl border-2 border-emerald-400 shadow-sm shadow-emerald-100 p-4 mb-3">
+                  <div class="flex items-start justify-between mb-2">
+                    <div>
+                      <div class="flex items-center gap-1.5">
+                        <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 flex-shrink-0"></div>
+                        <span class="text-sm font-semibold text-slate-800">Morning Lawn <span class="font-normal text-slate-400">· Lawn</span></span>
+                      </div>
+                      <p class="text-[10px] text-slate-400 mt-1 ml-4">Next: Mon 07:00</p>
+                    </div>
+                    <div class="text-right flex-shrink-0">
+                      <p class="text-sm font-semibold text-slate-700">07:00</p>
+                      <p class="text-[10px] text-slate-400">20 min</p>
+                    </div>
+                  </div>
+                  <div class="flex gap-1 mb-3 ml-4">
+                    <span class="text-[10px] font-semibold w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 text-slate-400">Su</span>
+                    <span class="text-[10px] font-semibold w-6 h-6 flex items-center justify-center rounded-full bg-emerald-600 text-white">Mo</span>
+                    <span class="text-[10px] font-semibold w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 text-slate-400">Tu</span>
+                    <span class="text-[10px] font-semibold w-6 h-6 flex items-center justify-center rounded-full bg-emerald-600 text-white">We</span>
+                    <span class="text-[10px] font-semibold w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 text-slate-400">Th</span>
+                    <span class="text-[10px] font-semibold w-6 h-6 flex items-center justify-center rounded-full bg-emerald-600 text-white">Fr</span>
+                    <span class="text-[10px] font-semibold w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 text-slate-400">Sa</span>
+                  </div>
+                  <div class="flex gap-1.5 ml-4">
+                    <button class="text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600">Disable</button>
+                    <button class="text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600">Edit</button>
+                    <button class="text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-red-100 text-red-500">Delete</button>
+                  </div>
+                </div>
+
+                <!-- Schedule 2 enabled -->
+                <div class="bg-white rounded-2xl border-2 border-emerald-400 shadow-sm shadow-emerald-100 p-4 mb-4">
+                  <div class="flex items-start justify-between mb-2">
+                    <div>
+                      <div class="flex items-center gap-1.5">
+                        <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 flex-shrink-0"></div>
+                        <span class="text-sm font-semibold text-slate-800">Night Drip <span class="font-normal text-slate-400">· Vegs</span></span>
+                      </div>
+                      <p class="text-[10px] text-slate-400 mt-1 ml-4">Next: Tue 22:00</p>
+                    </div>
+                    <div class="text-right flex-shrink-0">
+                      <p class="text-sm font-semibold text-slate-700">22:00</p>
+                      <p class="text-[10px] text-slate-400">15 min</p>
+                    </div>
+                  </div>
+                  <div class="flex gap-1 mb-3 ml-4">
+                    <span class="text-[10px] font-semibold w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 text-slate-400">Su</span>
+                    <span class="text-[10px] font-semibold w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 text-slate-400">Mo</span>
+                    <span class="text-[10px] font-semibold w-6 h-6 flex items-center justify-center rounded-full bg-emerald-600 text-white">Tu</span>
+                    <span class="text-[10px] font-semibold w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 text-slate-400">We</span>
+                    <span class="text-[10px] font-semibold w-6 h-6 flex items-center justify-center rounded-full bg-emerald-600 text-white">Th</span>
+                    <span class="text-[10px] font-semibold w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 text-slate-400">Fr</span>
+                    <span class="text-[10px] font-semibold w-6 h-6 flex items-center justify-center rounded-full bg-emerald-600 text-white">Sa</span>
+                  </div>
+                  <div class="flex gap-1.5 ml-4">
+                    <button class="text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600">Disable</button>
+                    <button class="text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600">Edit</button>
+                    <button class="text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-red-100 text-red-500">Delete</button>
+                  </div>
+                </div>
+
+                <!-- Weekly chart -->
+                <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-2">Weekly View</p>
+                <div class="bg-white rounded-2xl border border-slate-200 p-3">
+                  <div class="flex flex-wrap gap-1 mb-3">
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full text-white" style="background:#10b981">Lawn</span>
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full text-white" style="background:#3b82f6">Vegetable Garden</span>
+                  </div>
+                  <div class="flex items-center gap-1 mb-1">
+                    <span class="w-5 flex-shrink-0"></span>
+                    <div class="flex-1 relative h-3">
+                      <span class="absolute left-0 text-[9px] text-slate-400">00:00</span>
+                      <span class="absolute left-1/4 -translate-x-1/2 text-[9px] text-slate-400">06:00</span>
+                      <span class="absolute left-1/2 -translate-x-1/2 text-[9px] text-slate-400">12:00</span>
+                      <span class="absolute left-3/4 -translate-x-1/2 text-[9px] text-slate-400">18:00</span>
+                      <span class="absolute right-0 text-[9px] text-slate-400">24:00</span>
+                    </div>
+                  </div>
+                  <!-- Su -->
+                  <div class="flex items-start gap-1 mb-0.5"><span class="text-[9px] text-slate-400 w-5 text-right leading-none mt-1 flex-shrink-0">Su</span><div class="flex-1 relative rounded bg-slate-50" style="height:14px"><div class="absolute inset-0 flex"><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 h-full"></div></div></div></div>
+                  <!-- Mo: Lawn 07:00 20min = left 29.2% w 1.4% -->
+                  <div class="flex items-start gap-1 mb-0.5"><span class="text-[9px] text-slate-400 w-5 text-right leading-none mt-1 flex-shrink-0">Mo</span><div class="flex-1 relative rounded bg-slate-50" style="height:14px"><div class="absolute inset-0 flex"><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 h-full"></div></div><div class="absolute rounded" style="left:29.2%;width:2%;top:2px;bottom:2px;background:#10b981"></div></div></div>
+                  <!-- Tu: Vegs 22:00 15min = left 91.7% w 1% -->
+                  <div class="flex items-start gap-1 mb-0.5"><span class="text-[9px] text-slate-400 w-5 text-right leading-none mt-1 flex-shrink-0">Tu</span><div class="flex-1 relative rounded bg-slate-50" style="height:14px"><div class="absolute inset-0 flex"><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 h-full"></div></div><div class="absolute rounded" style="left:91.7%;width:1.5%;top:2px;bottom:2px;background:#3b82f6"></div></div></div>
+                  <!-- We: Lawn -->
+                  <div class="flex items-start gap-1 mb-0.5"><span class="text-[9px] text-slate-400 w-5 text-right leading-none mt-1 flex-shrink-0">We</span><div class="flex-1 relative rounded bg-slate-50" style="height:14px"><div class="absolute inset-0 flex"><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 h-full"></div></div><div class="absolute rounded" style="left:29.2%;width:2%;top:2px;bottom:2px;background:#10b981"></div></div></div>
+                  <!-- Th: Vegs -->
+                  <div class="flex items-start gap-1 mb-0.5"><span class="text-[9px] text-slate-400 w-5 text-right leading-none mt-1 flex-shrink-0">Th</span><div class="flex-1 relative rounded bg-slate-50" style="height:14px"><div class="absolute inset-0 flex"><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 h-full"></div></div><div class="absolute rounded" style="left:91.7%;width:1.5%;top:2px;bottom:2px;background:#3b82f6"></div></div></div>
+                  <!-- Fr: Lawn -->
+                  <div class="flex items-start gap-1 mb-0.5"><span class="text-[9px] text-slate-400 w-5 text-right leading-none mt-1 flex-shrink-0">Fr</span><div class="flex-1 relative rounded bg-slate-50" style="height:14px"><div class="absolute inset-0 flex"><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 h-full"></div></div><div class="absolute rounded" style="left:29.2%;width:2%;top:2px;bottom:2px;background:#10b981"></div></div></div>
+                  <!-- Sa: Vegs -->
+                  <div class="flex items-start gap-1"><span class="text-[9px] text-slate-400 w-5 text-right leading-none mt-1 flex-shrink-0">Sa</span><div class="flex-1 relative rounded bg-slate-50" style="height:14px"><div class="absolute inset-0 flex"><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 h-full"></div></div><div class="absolute rounded" style="left:91.7%;width:1.5%;top:2px;bottom:2px;background:#3b82f6"></div></div></div>
+                </div>
+              </main>
+              <div class="bg-slate-900 flex-shrink-0 flex items-center justify-around px-8 h-9">
+                <span class="text-white/40 text-sm leading-none">◁</span>
+                <span class="text-white/40 text-base leading-none">○</span>
+                <span class="text-white/40 text-sm leading-none">□</span>
+              </div>
+            </div>
+
+            <!-- ══ HISTORY SCREEN ══ -->
+            <div id="dscreen-history" class="absolute inset-0 flex flex-col hidden">
+              <header class="bg-white border-b border-slate-200 flex-shrink-0">
+                <div class="px-4 h-14 flex items-center justify-between">
+                  <div class="flex items-center gap-2"><span class="text-lg">💧</span><span class="text-sm font-bold text-slate-800">Sprinqua</span></div>
+                  <div class="flex items-center">
+                    <button onclick="demoTab('zones')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">Zones</button>
+                    <button onclick="demoTab('history')" class="text-[11px] px-2 py-1 font-bold text-slate-800 cursor-pointer">History</button>
+                    <button onclick="demoTab('schedules')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">Schedule</button>
+                    <button onclick="demoTab('settings')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">⚙</button>
+                  </div>
+                </div>
+              </header>
+              <main class="flex-1 overflow-y-auto px-3 py-4">
+                <div class="flex items-center justify-between mb-4">
+                  <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Activation History</p>
+                  <span class="text-[10px] text-slate-400">8 entries</span>
+                </div>
+                <!-- Stats -->
+                <div class="grid grid-cols-3 gap-2 mb-4">
+                  <div class="bg-white rounded-2xl border border-slate-200 px-3 py-3 text-center">
+                    <p class="text-base font-bold text-slate-800 leading-none">1h 48m</p>
+                    <p class="text-[10px] text-slate-400 mt-1.5">last 7 days</p>
+                  </div>
+                  <div class="bg-white rounded-2xl border border-slate-200 px-3 py-3 text-center">
+                    <p class="text-base font-bold text-emerald-600 leading-none">8</p>
+                    <p class="text-[10px] text-slate-400 mt-1.5">activations</p>
+                  </div>
+                  <div class="bg-white rounded-2xl border border-slate-200 px-3 py-3 text-center">
+                    <p class="text-base font-bold text-amber-500 leading-none">1</p>
+                    <p class="text-[10px] text-slate-400 mt-1.5">skipped</p>
+                  </div>
+                </div>
+                <!-- 24h chart -->
+                <div class="bg-white rounded-2xl border border-slate-200 p-3 mb-4">
+                  <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-2">Last 24 hours</p>
+                  <div class="flex items-center gap-2 mb-1">
+                    <div class="flex-shrink-0" style="width:80px"></div>
+                    <div class="flex-1 relative h-3">
+                      <span class="absolute left-0 text-[9px] text-slate-400">00:00</span>
+                      <span class="absolute left-1/4 -translate-x-1/2 text-[9px] text-slate-400">06:00</span>
+                      <span class="absolute left-1/2 -translate-x-1/2 text-[9px] text-slate-400">12:00</span>
+                      <span class="absolute left-3/4 -translate-x-1/2 text-[9px] text-slate-400">18:00</span>
+                      <span class="absolute right-0 text-[9px] text-slate-400">Now</span>
+                    </div>
+                  </div>
+                  <div class="space-y-1">
+                    <div class="flex items-center gap-2"><div class="flex items-center gap-1.5 flex-shrink-0" style="width:80px"><span class="text-[9px] font-mono font-semibold text-white px-1 py-0.5 rounded flex-shrink-0" style="background:#10b981">CH1</span><span class="text-[9px] text-slate-500 truncate">Lawn</span></div><div class="flex-1 relative rounded bg-slate-50" style="height:18px"><div class="absolute inset-0 flex"><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 h-full"></div></div><div class="absolute rounded" style="left:29.2%;width:2%;top:3px;bottom:3px;background:#10b981;opacity:.85"></div></div></div>
+                    <div class="flex items-center gap-2"><div class="flex items-center gap-1.5 flex-shrink-0" style="width:80px"><span class="text-[9px] font-mono font-semibold text-white px-1 py-0.5 rounded flex-shrink-0" style="background:#3b82f6">CH2</span><span class="text-[9px] text-slate-500 truncate">Vegs</span></div><div class="flex-1 relative rounded bg-slate-50" style="height:18px"><div class="absolute inset-0 flex"><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 h-full"></div></div><div class="absolute rounded" style="left:27.1%;width:1.5%;top:3px;bottom:3px;background:#3b82f6;opacity:.85"></div></div></div>
+                    <div class="flex items-center gap-2"><div class="flex items-center gap-1.5 flex-shrink-0" style="width:80px"><span class="text-[9px] font-mono font-semibold text-white px-1 py-0.5 rounded flex-shrink-0" style="background:#8b5cf6">CH3</span><span class="text-[9px] text-slate-500 truncate">Flowers</span></div><div class="flex-1 relative rounded bg-slate-50" style="height:18px"><div class="absolute inset-0 flex"><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 h-full"></div></div></div></div>
+                    <div class="flex items-center gap-2"><div class="flex items-center gap-1.5 flex-shrink-0" style="width:80px"><span class="text-[9px] font-mono font-semibold text-white px-1 py-0.5 rounded flex-shrink-0" style="background:#f59e0b">CH4</span><span class="text-[9px] text-slate-500 truncate">Balcony</span></div><div class="flex-1 relative rounded bg-slate-50" style="height:18px"><div class="absolute inset-0 flex"><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 border-r border-slate-200 h-full"></div><div class="flex-1 h-full"></div></div></div></div>
+                  </div>
+                </div>
+                <!-- Entries -->
+                <div class="space-y-2">
+                  <!-- Active -->
+                  <div class="bg-white rounded-2xl border-2 border-emerald-400 shadow-sm shadow-emerald-100 p-3">
+                    <div class="flex items-start justify-between gap-2">
+                      <div class="flex items-start gap-2">
+                        <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 mt-0.5 flex-shrink-0"></div>
+                        <div>
+                          <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="text-[10px] font-mono font-semibold text-white px-1.5 py-0.5 rounded" style="background:#10b981">CH1</span>
+                            <span class="text-xs font-semibold text-slate-800">Lawn</span>
+                            <span class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">Manual</span>
+                          </div>
+                          <p class="text-[10px] text-slate-400 mt-0.5">Today 08:14</p>
+                        </div>
+                      </div>
+                      <span class="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full flex-shrink-0">Active</span>
+                    </div>
+                  </div>
+                  <!-- Schedule -->
+                  <div class="bg-white rounded-2xl border-2 border-slate-200 p-3">
+                    <div class="flex items-start justify-between gap-2">
+                      <div class="flex items-start gap-2">
+                        <div class="w-2.5 h-2.5 rounded-full bg-slate-300 mt-0.5 flex-shrink-0"></div>
+                        <div>
+                          <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="text-[10px] font-mono font-semibold text-white px-1.5 py-0.5 rounded" style="background:#3b82f6">CH2</span>
+                            <span class="text-xs font-semibold text-slate-800">Vegetable Garden</span>
+                            <span class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">Schedule</span>
+                          </div>
+                          <p class="text-[10px] text-slate-400 mt-0.5">Today 06:30</p>
+                        </div>
+                      </div>
+                      <div class="text-right flex-shrink-0"><p class="text-xs font-semibold text-slate-700">15 min</p><p class="text-[10px] text-slate-400">→ 06:45</p></div>
+                    </div>
+                  </div>
+                  <!-- Pulse -->
+                  <div class="bg-white rounded-2xl border-2 border-slate-200 p-3">
+                    <div class="flex items-start justify-between gap-2">
+                      <div class="flex items-start gap-2">
+                        <div class="w-2.5 h-2.5 rounded-full bg-slate-300 mt-0.5 flex-shrink-0"></div>
+                        <div>
+                          <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="text-[10px] font-mono font-semibold text-white px-1.5 py-0.5 rounded" style="background:#8b5cf6">CH3</span>
+                            <span class="text-xs font-semibold text-slate-800">Flower Bed</span>
+                            <span class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">Pulse</span>
+                          </div>
+                          <p class="text-[10px] text-slate-400 mt-0.5">Yesterday 17:52</p>
+                        </div>
+                      </div>
+                      <div class="text-right flex-shrink-0"><p class="text-xs font-semibold text-slate-700">5 min</p><p class="text-[10px] text-slate-400">→ 17:57</p></div>
+                    </div>
+                  </div>
+                  <!-- Skipped -->
+                  <div class="bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 p-3">
+                    <div class="flex items-start gap-2">
+                      <div class="w-2.5 h-2.5 rounded-full bg-slate-300 mt-0.5 flex-shrink-0"></div>
+                      <div>
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                          <span class="text-[10px] font-mono font-semibold text-white px-1.5 py-0.5 rounded" style="background:#10b981">CH1</span>
+                          <span class="text-xs font-semibold text-slate-400">Lawn</span>
+                          <span class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-500">🌦 Skipped · Smart Watering</span>
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-0.5">Yesterday 07:00</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </main>
+              <div class="bg-slate-900 flex-shrink-0 flex items-center justify-around px-8 h-9">
+                <span class="text-white/40 text-sm leading-none">◁</span>
+                <span class="text-white/40 text-base leading-none">○</span>
+                <span class="text-white/40 text-sm leading-none">□</span>
+              </div>
+            </div>
+
+            <!-- ══ SETTINGS SCREEN ══ -->
+            <div id="dscreen-settings" class="absolute inset-0 flex flex-col hidden">
+              <header class="bg-white border-b border-slate-200 flex-shrink-0">
+                <div class="px-4 h-14 flex items-center justify-between">
+                  <div class="flex items-center gap-2"><span class="text-lg">💧</span><span class="text-sm font-bold text-slate-800">Sprinqua</span></div>
+                  <div class="flex items-center">
+                    <button onclick="demoTab('zones')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">Zones</button>
+                    <button onclick="demoTab('history')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">History</button>
+                    <button onclick="demoTab('schedules')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">Schedule</button>
+                    <button onclick="demoTab('settings')" class="text-[11px] px-2 py-1 font-bold text-slate-800 cursor-pointer">⚙</button>
+                  </div>
+                </div>
+              </header>
+              <main class="flex-1 overflow-y-auto px-3 py-4">
+
+                <!-- Preferences -->
+                <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Preferences</p>
+                <div class="bg-white rounded-2xl border border-slate-200 p-4 mb-4 space-y-4">
+
+                  <!-- Language -->
+                  <div>
+                    <p class="text-[10px] font-medium text-slate-500 mb-1.5">Language</p>
+                    <div class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs text-slate-800 bg-white flex items-center justify-between">
+                      <span>English</span><span class="text-slate-400">▾</span>
+                    </div>
+                  </div>
+
+                  <!-- Clock format -->
+                  <div>
+                    <p class="text-[10px] font-medium text-slate-500 mb-1.5">Time format</p>
+                    <div class="flex gap-2">
+                      <div class="flex-1 flex items-center justify-center h-9 rounded-xl border-2 border-emerald-500 bg-emerald-50 text-xs font-semibold text-emerald-700">
+                        24h <span class="text-[10px] font-normal opacity-60 ml-1">14:30</span>
+                      </div>
+                      <div class="flex-1 flex items-center justify-center h-9 rounded-xl border-2 border-slate-200 text-xs font-semibold text-slate-400">
+                        12h <span class="text-[10px] font-normal opacity-60 ml-1">2:30 PM</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Exclusive zone -->
+                  <div class="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-3 bg-slate-50">
+                    <div class="pr-3">
+                      <p class="text-xs font-medium text-slate-700">Exclusive zone mode</p>
+                      <p class="text-[10px] text-slate-400 mt-0.5">Only one zone active at a time</p>
+                    </div>
+                    <div class="w-9 h-5 bg-slate-200 rounded-full flex-shrink-0 relative">
+                      <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow"></div>
+                    </div>
+                  </div>
+
+                  <!-- MQTT toggle (ON) -->
+                  <div class="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-3 bg-slate-50">
+                    <div class="pr-3">
+                      <p class="text-xs font-medium text-slate-700">Enable MQTT</p>
+                      <p class="text-[10px] text-slate-400 mt-0.5">Expose zones as switches in Home Assistant</p>
+                    </div>
+                    <div class="w-9 h-5 bg-emerald-600 rounded-full flex-shrink-0 relative">
+                      <div class="absolute top-0.5 right-0.5 w-4 h-4 bg-white rounded-full shadow"></div>
+                    </div>
+                  </div>
+
+                  <!-- MQTT fields -->
+                  <div class="space-y-3">
+                    <div>
+                      <p class="text-[10px] font-medium text-slate-500 mb-1">Broker</p>
+                      <div class="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 bg-white">192.168.1.100</div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                      <div>
+                        <p class="text-[10px] font-medium text-slate-500 mb-1">Port</p>
+                        <div class="rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 bg-white">1883</div>
+                      </div>
+                      <div>
+                        <p class="text-[10px] font-medium text-slate-500 mb-1">Prefix</p>
+                        <div class="rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-800 bg-white">sprinqua</div>
+                      </div>
+                    </div>
+                    <!-- Control mode -->
+                    <div>
+                      <p class="text-[10px] font-medium text-slate-500 mb-1.5">Control mode</p>
+                      <div class="space-y-1.5">
+                        <div class="flex items-start gap-2.5 rounded-xl border-2 border-emerald-400 bg-emerald-50 px-3 py-2.5">
+                          <div class="w-3 h-3 rounded-full border-2 border-emerald-600 mt-0.5 flex-shrink-0 flex items-center justify-center">
+                            <div class="w-1.5 h-1.5 rounded-full bg-emerald-600"></div>
+                          </div>
+                          <div>
+                            <p class="text-xs font-semibold text-slate-800">Standalone</p>
+                            <p class="text-[10px] text-slate-400 mt-0.5">Sprinqua manages its own schedules</p>
+                          </div>
+                        </div>
+                        <div class="flex items-start gap-2.5 rounded-xl border-2 border-slate-200 bg-white px-3 py-2.5">
+                          <div class="w-3 h-3 rounded-full border-2 border-slate-300 mt-0.5 flex-shrink-0"></div>
+                          <div>
+                            <p class="text-xs font-semibold text-slate-800">Home Assistant Managed</p>
+                            <p class="text-[10px] text-slate-400 mt-0.5">HA has full control via MQTT</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Smart Watering toggle (OFF) -->
+                  <div class="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-3 bg-slate-50">
+                    <div class="pr-3">
+                      <p class="text-xs font-medium text-slate-700">🌦 Smart Watering</p>
+                      <p class="text-[10px] text-slate-400 mt-0.5">Skip watering when rain is forecast</p>
+                    </div>
+                    <div class="w-9 h-5 bg-slate-200 rounded-full flex-shrink-0 relative">
+                      <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow"></div>
+                    </div>
+                  </div>
+
+                  <button class="w-full bg-emerald-600 text-white font-semibold py-2.5 rounded-xl text-xs">Save</button>
+                </div>
+
+                <!-- Hardware -->
+                <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Hardware</p>
+                <div class="bg-white rounded-2xl border border-slate-200 p-4">
+                  <div class="flex items-center gap-3 mb-3">
+                    <div class="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                      <span class="text-sm">🔌</span>
+                    </div>
+                    <div>
+                      <p class="text-xs font-semibold text-slate-800">Keyestudio 4-Channel</p>
+                      <p class="text-[10px] text-slate-400">4 zones configured</p>
+                    </div>
+                  </div>
+                  <p class="text-[10px] text-slate-400 mb-2">Resets board, zones, schedules and history.</p>
+                  <button class="w-full border-2 border-red-200 text-red-600 font-semibold py-2.5 rounded-xl text-xs">↺ Re-run Hardware Wizard</button>
+                </div>
+
+              </main>
+              <div class="bg-slate-900 flex-shrink-0 flex items-center justify-around px-8 h-9">
+                <span class="text-white/40 text-sm leading-none">◁</span>
+                <span class="text-white/40 text-base leading-none">○</span>
+                <span class="text-white/40 text-sm leading-none">□</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <script>
+    function demoTab(name) {
+      ['zones','schedules','history','settings'].forEach(function(t) {
+        document.getElementById('dscreen-' + t).classList.add('hidden');
+        var btn = document.getElementById('dtab-' + t);
+        btn.classList.remove('bg-slate-900','text-white','shadow-sm');
+        btn.classList.add('bg-slate-100','text-slate-600');
+      });
+      document.getElementById('dscreen-' + name).classList.remove('hidden');
+      var active = document.getElementById('dtab-' + name);
+      active.classList.remove('bg-slate-100','text-slate-600');
+      active.classList.add('bg-slate-900','text-white','shadow-sm');
+    }
+    var demoSec = 263;
+    setInterval(function() {
+      demoSec++;
+      var m = String(Math.floor(demoSec / 60)).padStart(2, '0');
+      var s = String(demoSec % 60).padStart(2, '0');
+      var el = document.getElementById('demo-timer');
+      if (el) el.textContent = '⏱ ' + m + ':' + s;
+    }, 1000);
+  </script>
+
+  <!-- Boards -->
+  <section id="boards" class="py-20 px-6 bg-white">
+    <div class="max-w-5xl mx-auto">
+      <div class="text-center mb-14">
+        <h2 data-i18n="boards_h2" class="text-3xl font-bold text-slate-900 mb-3">Supported relay boards</h2>
+        <p data-i18n="boards_sub" class="text-slate-500 max-w-xl mx-auto">Works out of the box with popular relay HATs for Raspberry Pi. More boards are being added regularly.</p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+
+        <!-- 3-channel Waveshare -->
+        <div class="rounded-2xl border-2 border-slate-200 overflow-hidden card-hover">
+          <div class="px-6 pt-6 pb-3">
+            <div class="text-2xl">🟢</div>
+          </div>
+          <img src="site_img/11638_card.jpg" alt="Waveshare 3-Channel relay board" class="w-full h-40 object-cover">
+          <div class="p-6">
+            <h3 class="font-semibold text-slate-900 mb-1">Waveshare 3-Channel</h3>
+            <p class="text-xs text-slate-400 font-mono mb-3">SKU: 11638</p>
+            <p class="text-sm text-slate-500">Compact 3-channel relay HAT for Raspberry Pi. Great for smaller setups or balcony gardens.</p>
+          </div>
+        </div>
+
+        <!-- 3-channel Seengreat -->
+        <div class="rounded-2xl border-2 border-slate-200 overflow-hidden card-hover">
+          <div class="px-6 pt-6 pb-3">
+            <div class="text-2xl">🟢</div>
+          </div>
+          <img src="site_img/250509_card.jpg" alt="Seengreat 3-CH Relay HAT" class="w-full h-40 object-cover">
+          <div class="p-6">
+            <h3 class="font-semibold text-slate-900 mb-1">Seengreat 3-Channel</h3>
+            <p class="text-xs text-slate-400 font-mono mb-3">SKU: 250509</p>
+            <p class="text-sm text-slate-500">3-channel relay expansion board for Raspberry Pi. A solid choice for compact irrigation setups.</p>
+          </div>
+        </div>
+
+        <!-- 4-channel Keyestudio -->
+        <div class="rounded-2xl border-2 border-slate-200 overflow-hidden card-hover">
+          <div class="px-6 pt-6 pb-3">
+            <div class="text-2xl">🟢</div>
+          </div>
+          <img src="site_img/ks0212_card.jpg" alt="Keyestudio KS0212 relay board" class="w-full h-52 object-cover">
+          <div class="p-6">
+            <h3 class="font-semibold text-slate-900 mb-1">Keyestudio 4-Channel</h3>
+            <p class="text-xs text-slate-400 font-mono mb-3">SKU: KS0212</p>
+            <p class="text-sm text-slate-500">4-channel relay board for Raspberry Pi. Ideal for small gardens with up to 4 independent zones.</p>
+          </div>
+        </div>
+
+        <!-- 4-channel Seengreat -->
+        <div class="rounded-2xl border-2 border-slate-200 overflow-hidden card-hover">
+          <div class="px-6 pt-6 pb-3">
+            <div class="text-2xl">🟢</div>
+          </div>
+          <img src="site_img/220741_card.jpg" alt="Seengreat 4-CH Relay HAT" class="w-full h-40 object-cover">
+          <div class="p-6">
+            <h3 class="font-semibold text-slate-900 mb-1">Seengreat 4-Channel</h3>
+            <p class="text-xs text-slate-400 font-mono mb-3">SKU: 220741</p>
+            <p class="text-sm text-slate-500">4-channel relay expansion board for Raspberry Pi. Ideal for small gardens with up to 4 independent zones.</p>
+          </div>
+        </div>
+
+        <!-- 6-channel -->
+        <div class="rounded-2xl border-2 border-slate-200 overflow-hidden card-hover">
+          <div class="px-6 pt-6 pb-3">
+            <div class="text-2xl">🟢</div>
+          </div>
+          <img src="site_img/20863_card.jpg" alt="Waveshare RPi Zero 6-Channel relay board" class="w-full h-40 object-cover">
+          <div class="p-6">
+            <h3 class="font-semibold text-slate-900 mb-1">Waveshare RPi Zero 6-Channel</h3>
+            <p class="text-xs text-slate-400 font-mono mb-3">SKU: 20863</p>
+            <p class="text-sm text-slate-500">6-channel industrial relay module for Raspberry Pi Zero. Perfect for mid-size irrigation setups.</p>
+          </div>
+        </div>
+
+        <!-- 8-channel Waveshare -->
+        <div class="rounded-2xl border-2 border-slate-200 overflow-hidden card-hover">
+          <div class="px-6 pt-6 pb-3">
+            <div class="text-2xl">🟢</div>
+          </div>
+          <img src="site_img/15423_card.jpg" alt="Waveshare 8-Channel relay board" class="w-full h-40 object-cover">
+          <div class="p-6">
+            <h3 class="font-semibold text-slate-900 mb-1">Waveshare 8-Channel</h3>
+            <p class="text-xs text-slate-400 font-mono mb-3">SKU: 15423</p>
+            <p class="text-sm text-slate-500">8-channel relay HAT for Raspberry Pi. Supports up to 8 independent irrigation zones.</p>
+          </div>
+        </div>
+
+        <!-- 8-channel Seengreat -->
+        <div class="rounded-2xl border-2 border-slate-200 overflow-hidden card-hover">
+          <div class="px-6 pt-6 pb-3">
+            <div class="text-2xl">🟢</div>
+          </div>
+          <img src="site_img/260115_card.jpg" alt="Seengreat 8-CH Relay Board" class="w-full h-40 object-cover">
+          <div class="p-6">
+            <h3 class="font-semibold text-slate-900 mb-1">Seengreat 8-Channel</h3>
+            <p class="text-xs text-slate-400 font-mono mb-3">SKU: 260115</p>
+            <p class="text-sm text-slate-500">8-channel optocoupler-isolated relay board. Wide voltage input (5–12V), ideal for larger irrigation setups.</p>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="mt-8 bg-slate-50 rounded-2xl border border-slate-200 px-6 py-5 flex items-center justify-between gap-6 flex-wrap">
+        <div class="flex items-start gap-4">
+          <span class="text-2xl">🔌</span>
+          <div>
+            <p data-i18n="boards_request_h" class="font-semibold text-slate-800 text-sm">Don't see your board?</p>
+            <p data-i18n="boards_request_p" class="text-sm text-slate-500 mt-0.5">Get in touch and we'll add support for your relay board.</p>
+          </div>
+        </div>
+        <a href="https://github.com/OrbitOS-org/sprinqua/issues/new?title=Board+support+request"
+           class="flex-shrink-0 text-sm font-semibold bg-slate-900 text-white px-5 py-2.5 rounded-xl hover:bg-slate-700 transition-colors">
+          <span data-i18n="boards_request_btn">Request a board →</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Home Assistant -->
+  <section id="ha" class="py-20 px-6 bg-slate-50">
+    <div class="max-w-5xl mx-auto">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div>
+          <div class="inline-flex items-center gap-2 bg-blue-100 text-blue-700 rounded-full px-3 py-1 text-xs font-semibold mb-5">
+            MQTT · Auto-Discovery
+          </div>
+          <p data-i18n="ha_with" class="text-3xl font-bold text-slate-900 mb-4">Works seamlessly with</p>
+          <div class="flex items-center gap-6 mb-6">
+            <img src="site_img/HA.png" alt="Home Assistant" class="h-14 object-contain">
+            <img src="site_img/mqtt.png" alt="MQTT" class="h-14 object-contain opacity-80">
+          </div>
+          <p data-i18n="ha_p" class="text-slate-500 leading-relaxed mb-6">Connect Sprinqua to your MQTT broker and all irrigation zones appear automatically in Home Assistant as switches — no manual configuration required.</p>
+          <ul class="space-y-3">
+            <li class="flex items-start gap-3">
+              <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">✓</span>
+              <span data-i18ni="ha_li1" class="text-sm text-slate-600">MQTT auto-discovery for all zones as <code class="font-mono bg-slate-200 px-1 py-0.5 rounded text-xs">switch</code> entities</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">✓</span>
+              <span data-i18ni="ha_li2" class="text-sm text-slate-600">Mode selector entity — switch between <strong>Standalone</strong> and <strong>Home Assistant Managed</strong> directly from HA</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">✓</span>
+              <span data-i18n="ha_li3" class="text-sm text-slate-600">In HA-Managed mode, internal schedules pause and HA takes full control via MQTT commands</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">✓</span>
+              <span data-i18n="ha_li4" class="text-sm text-slate-600">All activations triggered by HA are logged in history with an MQTT tag</span>
+            </li>
+          </ul>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 font-mono text-xs text-slate-600 leading-relaxed shadow-sm">
+          <p class="text-slate-400 mb-3"># Topics published by Sprinqua</p>
+          <p><span class="text-emerald-600">sprinqua/zone/1/state</span> → ON | OFF</p>
+          <p><span class="text-emerald-600">sprinqua/zone/2/state</span> → ON | OFF</p>
+          <p><span class="text-emerald-600">sprinqua/mode/state</span> → Standalone | HA-Managed</p>
+          <p class="mt-4 text-slate-400"># Commands accepted by Sprinqua</p>
+          <p><span class="text-blue-500">sprinqua/zone/1/set</span> ← ON | OFF</p>
+          <p><span class="text-blue-500">sprinqua/mode/set</span> ← Standalone | Home Assistant Managed</p>
+          <p class="mt-4 text-slate-400"># HA Auto-discovery</p>
+          <p><span class="text-violet-500">homeassistant/switch/</span></p>
+          <p class="pl-4"><span class="text-violet-500">sprinqua_zone_1/config</span> → {...}</p>
+          <p><span class="text-violet-500">homeassistant/select/</span></p>
+          <p class="pl-4"><span class="text-violet-500">sprinqua_mode/config</span> → {...}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="py-20 px-6 bg-white">
+    <div class="max-w-3xl mx-auto text-center">
+      <h2 data-i18n="how_h2" class="text-3xl font-bold text-slate-900 mb-3">Up and running in minutes</h2>
+      <p data-i18n="how_p" class="text-slate-500 mb-12">A guided setup wizard walks you through board selection, zone configuration, and relay testing before you ever touch a schedule.</p>
+      <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div class="text-center">
+          <div class="w-12 h-12 rounded-2xl bg-emerald-500 text-white font-bold text-lg flex items-center justify-center mx-auto mb-3">1</div>
+          <p data-i18n="how_1_h" class="text-sm font-semibold text-slate-800 mb-1">Select Board</p>
+          <p data-i18n="how_1_p" class="text-xs text-slate-400">Pick your relay HAT from the supported boards list</p>
+        </div>
+        <div class="text-center">
+          <div class="w-12 h-12 rounded-2xl bg-emerald-500 text-white font-bold text-lg flex items-center justify-center mx-auto mb-3">2</div>
+          <p data-i18n="how_2_h" class="text-sm font-semibold text-slate-800 mb-1">Name Zones</p>
+          <p data-i18n="how_2_p" class="text-xs text-slate-400">Map channels to zones with a type and safety limit</p>
+        </div>
+        <div class="text-center">
+          <div class="w-12 h-12 rounded-2xl bg-emerald-500 text-white font-bold text-lg flex items-center justify-center mx-auto mb-3">3</div>
+          <p data-i18n="how_3_h" class="text-sm font-semibold text-slate-800 mb-1">Test Relays</p>
+          <p data-i18n="how_3_p" class="text-xs text-slate-400">Pulse each relay 3s to verify physical wiring</p>
+        </div>
+        <div class="text-center">
+          <div class="w-12 h-12 rounded-2xl bg-emerald-500 text-white font-bold text-lg flex items-center justify-center mx-auto mb-3">4</div>
+          <p data-i18n="how_4_h" class="text-sm font-semibold text-slate-800 mb-1">Water</p>
+          <p data-i18n="how_4_p" class="text-xs text-slate-400">Set schedules, enable Smart Watering, done</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Install CTA -->
+  <section class="py-14 px-6 bg-emerald-600 text-white">
+    <div class="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
+      <div>
+        <p class="text-xl font-bold mb-1">Ready to get started?</p>
+        <p class="text-emerald-100 text-sm leading-relaxed">Install Sprinqua on your Raspberry Pi in under 10 minutes. Step-by-step guide included.</p>
+      </div>
+      <a href="install.html" class="flex-shrink-0 flex items-center gap-2 bg-white text-emerald-700 font-semibold px-6 py-3 rounded-xl hover:bg-emerald-50 transition-colors shadow-sm">
+        Installation Guide →
+      </a>
+    </div>
+  </section>
+
+  <!-- Open Source -->
+  <section class="py-20 px-6 bg-slate-900 text-white text-center">
+    <div class="max-w-2xl mx-auto">
+      <div class="text-5xl mb-6">💧</div>
+      <h2 data-i18n="oss_h2" class="text-3xl font-bold mb-4">Free and open source</h2>
+      <p data-i18n="oss_p" class="text-slate-400 leading-relaxed mb-8">Sprinqua is released under the GPL-3.0 license. Fork it, extend it, add your board, translate a new language. Contributions are welcome.</p>
+      <div class="flex flex-col sm:flex-row gap-3 justify-center">
+        <a href="https://github.com/OrbitOS-org/sprinqua" class="flex items-center justify-center gap-2 bg-white text-slate-900 font-semibold px-6 py-3 rounded-xl hover:bg-slate-100 transition-colors">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          <span data-i18n="oss_btn_github">View on GitHub</span>
+        </a>
+        <a href="https://github.com/OrbitOS-org/sprinqua/issues" class="flex items-center justify-center gap-2 bg-white/10 border border-white/20 text-white font-semibold px-6 py-3 rounded-xl hover:bg-white/20 transition-colors">
+          <span data-i18n="oss_btn_issue">Report an Issue</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="py-8 px-6 border-t border-slate-200 bg-white">
+    <div class="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-slate-400">
+      <div class="flex items-center gap-2">
+        <span>💧</span>
+        <span class="font-semibold text-slate-600">Sprinqua</span>
+        <span>· GPL-3.0 License</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <span class="text-slate-400">Built for</span>
+        <a href="https://orbit-os.org" class="flex items-center hover:opacity-80 transition-opacity">
+          <span class="bg-slate-900 rounded-lg px-2.5 py-1.5 flex items-center">
+            <img src="site_img/orbitos.png" alt="Orbit OS" class="h-5 object-contain">
+          </span>
+        </a>
+        <a href="https://github.com/OrbitOS-org/sprinqua" class="text-slate-500 hover:text-slate-800 transition-colors">GitHub</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+  (function() {
+    var T = {
+      en: {
+        meta_title: "Sprinqua — Smart Irrigation Controller",
+        meta_desc: "Open-source irrigation controller for Raspberry Pi. Schedule watering zones, skip rainy days with Smart Watering, and integrate with Home Assistant via MQTT. No cloud required.",
+        nav_features: "Features", nav_boards: "Boards", nav_ha: "Home Assistant",
+        hero_h1: "Smart Irrigation<br>for Raspberry Pi",
+        hero_p: "Sprinqua is a self-hosted irrigation controller that runs on Orbit OS. Schedule zones, skip watering when it rains, and integrate with Home Assistant — all from a clean web UI on your local network.",
+        hero_btn_github: "Get Started on GitHub", hero_btn_learn: "See Features",
+        stat_languages: "Languages", stat_boards: "Relay Boards", stat_cloud: "Cloud Deps",
+        feat_h2: "Everything you need, nothing you don't",
+        feat_h2_sub: "Runs entirely on your local network. No cloud account, no subscription, no data leaving your home.",
+        feat_zones_h3: "Zone Control",
+        feat_zones_p: "Turn zones on/off manually, run a 5-minute pulse, or let schedules handle everything. Safety auto-off per zone.",
+        feat_sched_h3: "Flexible Scheduling",
+        feat_sched_p: "Weekly schedules per zone with day-of-week selection, custom start time, and duration. Visual weekly overview chart.",
+        feat_smart_h3: "Smart Watering",
+        feat_smart_p: "Integrates with Open-Meteo (free, no API key) to skip irrigation when rain is forecast above your threshold.",
+        feat_hist_h3: "Activation History",
+        feat_hist_p: "Full log of every run — manual, scheduled, MQTT, or skipped. 7-day stats, 24h timeline chart, and skipped-run visibility.",
+        feat_mqtt_h3: "MQTT & Home Assistant",
+        feat_mqtt_p: "Auto-discovery for all zones as HA switches. Choose Standalone or HA-Managed mode — switch live from HA itself.",
+        feat_i18n_h3: "6 Languages",
+        feat_i18n_p: "Full UI in English, Portuguese, Spanish, French, German, and Italian. Language auto-detected or set manually.",
+        prev_h2: "Everything under control",
+        prev_p: "A walkthrough of the Sprinqua app — from turning zones on and off, to scheduling automatic runs, tracking history, and tuning your setup. All from a clean mobile interface that runs entirely on your device.",
+        prev_tab_zones: "💧 Zones", prev_tab_history: "📋 History", prev_tab_schedule: "🗓 Schedule", prev_tab_settings: "⚙ Settings",
+        boards_h2: "Supported relay boards",
+        boards_sub: "Works out of the box with popular relay HATs for Raspberry Pi. More boards are being added regularly.",
+        boards_request_h: "Don't see your board?",
+        boards_request_p: "Get in touch and we'll add support for your relay board.",
+        boards_request_btn: "Request a board →",
+        ha_with: "Works seamlessly with",
+        ha_p: "Connect Sprinqua to your MQTT broker and all irrigation zones appear automatically in Home Assistant as switches — no manual configuration required.",
+        ha_li1: 'MQTT auto-discovery for all zones as <code class="font-mono bg-slate-200 px-1 py-0.5 rounded text-xs">switch</code> entities',
+        ha_li2: "Mode selector entity — switch between <strong>Standalone</strong> and <strong>Home Assistant Managed</strong> directly from HA",
+        ha_li3: "In HA-Managed mode, internal schedules pause and HA takes full control via MQTT commands",
+        ha_li4: "All activations triggered by HA are logged in history with an MQTT tag",
+        how_h2: "Up and running in minutes",
+        how_p: "A guided setup wizard walks you through board selection, zone configuration, and relay testing before you ever touch a schedule.",
+        how_1_h: "Select Board", how_1_p: "Pick your relay HAT from the supported boards list",
+        how_2_h: "Name Zones", how_2_p: "Map channels to zones with a type and safety limit",
+        how_3_h: "Test Relays", how_3_p: "Pulse each relay 3s to verify physical wiring",
+        how_4_h: "Water", how_4_p: "Set schedules, enable Smart Watering, done",
+        oss_h2: "Free and open source",
+        oss_p: "Sprinqua is released under the GPL-3.0 license. Fork it, extend it, add your board, translate a new language. Contributions are welcome.",
+        oss_btn_github: "View on GitHub", oss_btn_issue: "Report an Issue"
+      },
+      pt: {
+        meta_title: "Sprinqua — Controlador de Rega Inteligente",
+        meta_desc: "Controlador de rega open-source para Raspberry Pi. Programa zonas, salta dias de chuva com a Rega Inteligente e integra com o Home Assistant via MQTT. Sem cloud.",
+        nav_features: "Funcionalidades", nav_boards: "Placas", nav_ha: "Home Assistant",
+        hero_h1: "Rega Inteligente<br>para Raspberry Pi",
+        hero_p: "O Sprinqua é um controlador de rega self-hosted que corre no Orbit OS. Programa zonas, salta a rega quando chove e integra com o Home Assistant — tudo a partir de uma interface web limpa na tua rede local.",
+        hero_btn_github: "Começar no GitHub", hero_btn_learn: "Ver Funcionalidades",
+        stat_languages: "Idiomas", stat_boards: "Placas Relay", stat_cloud: "Deps. Cloud",
+        feat_h2: "Tudo o que precisas, nada do que não precisas",
+        feat_h2_sub: "Corre inteiramente na tua rede local. Sem conta na cloud, sem subscrição, sem dados a sair de casa.",
+        feat_zones_h3: "Controlo de Zonas",
+        feat_zones_p: "Liga/desliga zonas manualmente, corre um pulso de 5 minutos, ou deixa os horários tratar de tudo. Auto-desligamento de segurança por zona.",
+        feat_sched_h3: "Agendamento Flexível",
+        feat_sched_p: "Horários semanais por zona com seleção de dias, hora de início e duração personalizáveis. Visão gráfica semanal.",
+        feat_smart_h3: "Rega Inteligente",
+        feat_smart_p: "Integra com o Open-Meteo (gratuito, sem API key) para saltar a rega quando há previsão de chuva acima do teu limiar.",
+        feat_hist_h3: "Histórico de Ativações",
+        feat_hist_p: "Registo completo de cada execução — manual, agendada, MQTT ou ignorada. Estatísticas de 7 dias, gráfico de 24h e visibilidade das regas ignoradas.",
+        feat_mqtt_h3: "MQTT e Home Assistant",
+        feat_mqtt_p: "Auto-descoberta de todas as zonas como switches no HA. Escolhe o modo Standalone ou Gerido pelo HA — muda em direto a partir do próprio HA.",
+        feat_i18n_h3: "6 Idiomas",
+        feat_i18n_p: "Interface completa em Português, Inglês, Espanhol, Francês, Alemão e Italiano. Idioma detetado automaticamente ou configurado manualmente.",
+        prev_h2: "Tudo sob controlo",
+        prev_p: "Uma visão geral da app Sprinqua — desde ligar e desligar zonas, agendar regas automáticas, consultar o histórico e afinar a configuração. Tudo a partir de uma interface móvel que corre no teu dispositivo.",
+        prev_tab_zones: "💧 Zonas", prev_tab_history: "📋 Histórico", prev_tab_schedule: "🗓 Horários", prev_tab_settings: "⚙ Definições",
+        boards_h2: "Placas relay suportadas",
+        boards_sub: "Funciona de imediato com as placas relay mais populares para Raspberry Pi. Mais placas são adicionadas regularmente.",
+        boards_request_h: "Não vês a tua placa?",
+        boards_request_p: "Entra em contacto e adicionamos suporte para a tua placa relay.",
+        boards_request_btn: "Pedir uma placa →",
+        ha_with: "Funciona perfeitamente com",
+        ha_p: "Liga o Sprinqua ao teu broker MQTT e todas as zonas de rega aparecem automaticamente no Home Assistant como switches — sem configuração manual.",
+        ha_li1: 'Auto-descoberta MQTT para todas as zonas como entidades <code class="font-mono bg-slate-200 px-1 py-0.5 rounded text-xs">switch</code>',
+        ha_li2: "Entidade seletora de modo — muda entre <strong>Standalone</strong> e <strong>Gerido pelo Home Assistant</strong> diretamente no HA",
+        ha_li3: "No modo Gerido pelo HA, os horários internos pausam e o HA toma controlo total via MQTT",
+        ha_li4: "Todas as ativações despoletadas pelo HA ficam registadas no histórico com a tag MQTT",
+        how_h2: "Em funcionamento em minutos",
+        how_p: "Um assistente de configuração guiado leva-te pela seleção da placa, configuração das zonas e teste dos relays — antes de tocares num horário.",
+        how_1_h: "Escolhe a Placa", how_1_p: "Seleciona a tua placa relay da lista de suportadas",
+        how_2_h: "Nomeia as Zonas", how_2_p: "Associa canais a zonas com tipo e limite de segurança",
+        how_3_h: "Testa os Relays", how_3_p: "Pulsa cada relay 3s para verificar a ligação física",
+        how_4_h: "Rega", how_4_p: "Define horários, ativa a Rega Inteligente, pronto",
+        oss_h2: "Gratuito e open-source",
+        oss_p: "O Sprinqua é distribuído sob a licença GPL-3.0. Faz fork, expande, adiciona a tua placa, traduz um novo idioma. Contribuições são bem-vindas.",
+        oss_btn_github: "Ver no GitHub", oss_btn_issue: "Reportar um Problema"
+      },
+      es: {
+        meta_title: "Sprinqua — Controlador de Riego Inteligente",
+        meta_desc: "Controlador de riego open-source para Raspberry Pi. Programa zonas, salta días lluviosos con el Riego Inteligente e integra con Home Assistant por MQTT. Sin nube.",
+        nav_features: "Funciones", nav_boards: "Placas", nav_ha: "Home Assistant",
+        hero_h1: "Riego Inteligente<br>para Raspberry Pi",
+        hero_p: "Sprinqua es un controlador de riego autoalojado que corre en Orbit OS. Programa zonas, salta el riego cuando llueve e integra con Home Assistant — todo desde una interfaz web limpia en tu red local.",
+        hero_btn_github: "Empezar en GitHub", hero_btn_learn: "Ver Funciones",
+        stat_languages: "Idiomas", stat_boards: "Placas Relay", stat_cloud: "Deps. Nube",
+        feat_h2: "Todo lo que necesitas, nada más",
+        feat_h2_sub: "Corre íntegramente en tu red local. Sin cuenta en la nube, sin suscripción, sin datos saliendo de casa.",
+        feat_zones_h3: "Control de Zonas",
+        feat_zones_p: "Enciende/apaga zonas manualmente, ejecuta un pulso de 5 minutos, o deja que los horarios lo gestionen todo. Auto-apagado de seguridad por zona.",
+        feat_sched_h3: "Programación Flexible",
+        feat_sched_p: "Horarios semanales por zona con selección de días, hora de inicio y duración. Vista gráfica semanal.",
+        feat_smart_h3: "Riego Inteligente",
+        feat_smart_p: "Se integra con Open-Meteo (gratuito, sin API key) para saltar el riego cuando se prevé lluvia por encima de tu umbral.",
+        feat_hist_h3: "Historial de Activaciones",
+        feat_hist_p: "Registro completo de cada ejecución — manual, programada, MQTT o saltada. Estadísticas de 7 días, gráfico de 24h y visibilidad de riegos saltados.",
+        feat_mqtt_h3: "MQTT y Home Assistant",
+        feat_mqtt_p: "Auto-descubrimiento de todas las zonas como switches en HA. Elige entre modo Independiente o Gestionado por HA — cambia en directo desde el propio HA.",
+        feat_i18n_h3: "6 Idiomas",
+        feat_i18n_p: "Interfaz completa en Español, Inglés, Portugués, Francés, Alemán e Italiano. Idioma detectado automáticamente o configurado manualmente.",
+        prev_h2: "Todo bajo control",
+        prev_p: "Un recorrido por la app Sprinqua — desde encender y apagar zonas, programar riegos automáticos, consultar el historial y ajustar la configuración. Todo desde una interfaz móvil que corre íntegramente en tu dispositivo.",
+        prev_tab_zones: "💧 Zonas", prev_tab_history: "📋 Historial", prev_tab_schedule: "🗓 Horarios", prev_tab_settings: "⚙ Ajustes",
+        boards_h2: "Placas relay soportadas",
+        boards_sub: "Funciona de inmediato con las placas relay más populares para Raspberry Pi. Se añaden más placas regularmente.",
+        boards_request_h: "¿No ves tu placa?",
+        boards_request_p: "Contáctanos y añadiremos soporte para tu placa relay.",
+        boards_request_btn: "Solicitar una placa →",
+        ha_with: "Funciona perfectamente con",
+        ha_p: "Conecta Sprinqua a tu broker MQTT y todas las zonas de riego aparecen automáticamente en Home Assistant como switches — sin configuración manual.",
+        ha_li1: 'Auto-descubrimiento MQTT para todas las zonas como entidades <code class="font-mono bg-slate-200 px-1 py-0.5 rounded text-xs">switch</code>',
+        ha_li2: "Entidad selectora de modo — cambia entre <strong>Independiente</strong> y <strong>Gestionado por Home Assistant</strong> directamente desde HA",
+        ha_li3: "En modo Gestionado por HA, los horarios internos se pausan y HA toma el control total vía MQTT",
+        ha_li4: "Todas las activaciones disparadas por HA se registran en el historial con etiqueta MQTT",
+        how_h2: "En marcha en minutos",
+        how_p: "Un asistente de configuración guiado te lleva por la selección de placa, configuración de zonas y prueba de relés — antes de tocar un horario.",
+        how_1_h: "Selecciona la Placa", how_1_p: "Elige tu placa relay de la lista de soportadas",
+        how_2_h: "Nombra las Zonas", how_2_p: "Asigna canales a zonas con tipo y límite de seguridad",
+        how_3_h: "Prueba los Relés", how_3_p: "Pulsa cada relé 3s para verificar el cableado físico",
+        how_4_h: "Riega", how_4_p: "Define horarios, activa el Riego Inteligente, listo",
+        oss_h2: "Gratis y open-source",
+        oss_p: "Sprinqua se distribuye bajo la licencia GPL-3.0. Haz un fork, amplíalo, añade tu placa, traduce un nuevo idioma. Las contribuciones son bienvenidas.",
+        oss_btn_github: "Ver en GitHub", oss_btn_issue: "Reportar un Problema"
+      },
+      fr: {
+        meta_title: "Sprinqua — Contrôleur d'Irrigation Intelligent",
+        meta_desc: "Contrôleur d'irrigation open-source pour Raspberry Pi. Programmez vos zones, sautez les jours de pluie avec l'Arrosage Intelligent et intégrez Home Assistant via MQTT. Sans cloud.",
+        nav_features: "Fonctionnalités", nav_boards: "Cartes", nav_ha: "Home Assistant",
+        hero_h1: "Irrigation Intelligente<br>pour Raspberry Pi",
+        hero_p: "Sprinqua est un contrôleur d'irrigation auto-hébergé qui tourne sur Orbit OS. Programmez des zones, sautez l'arrosage quand il pleut et intégrez Home Assistant — le tout depuis une interface web propre sur votre réseau local.",
+        hero_btn_github: "Démarrer sur GitHub", hero_btn_learn: "Voir les Fonctionnalités",
+        stat_languages: "Langues", stat_boards: "Cartes Relais", stat_cloud: "Dépend. Cloud",
+        feat_h2: "Tout ce qu'il vous faut, rien de plus",
+        feat_h2_sub: "Fonctionne entièrement sur votre réseau local. Pas de compte cloud, pas d'abonnement, pas de données sortant de chez vous.",
+        feat_zones_h3: "Contrôle des Zones",
+        feat_zones_p: "Activez/désactivez les zones manuellement, lancez une impulsion de 5 minutes, ou laissez les plannings tout gérer. Arrêt automatique de sécurité par zone.",
+        feat_sched_h3: "Planification Flexible",
+        feat_sched_p: "Plannings hebdomadaires par zone avec sélection des jours, heure de début et durée personnalisables. Vue graphique hebdomadaire.",
+        feat_smart_h3: "Arrosage Intelligent",
+        feat_smart_p: "S'intègre avec Open-Meteo (gratuit, sans clé API) pour sauter l'arrosage quand la pluie est prévue au-dessus de votre seuil.",
+        feat_hist_h3: "Historique des Activations",
+        feat_hist_p: "Journal complet de chaque exécution — manuelle, planifiée, MQTT ou ignorée. Statistiques 7 jours, graphique 24h et visibilité des arrosages ignorés.",
+        feat_mqtt_h3: "MQTT et Home Assistant",
+        feat_mqtt_p: "Auto-découverte de toutes les zones comme switchs dans HA. Choisissez le mode Autonome ou Géré par HA — changez en direct depuis HA lui-même.",
+        feat_i18n_h3: "6 Langues",
+        feat_i18n_p: "Interface complète en Français, Anglais, Portugais, Espagnol, Allemand et Italien. Langue détectée automatiquement ou configurée manuellement.",
+        prev_h2: "Tout sous contrôle",
+        prev_p: "Une présentation de l'app Sprinqua — de l'activation et désactivation des zones à la planification d'arrosages automatiques, en passant par l'historique et le réglage de votre configuration. Le tout depuis une interface mobile qui tourne entièrement sur votre appareil.",
+        prev_tab_zones: "💧 Zones", prev_tab_history: "📋 Historique", prev_tab_schedule: "🗓 Planning", prev_tab_settings: "⚙ Réglages",
+        boards_h2: "Cartes relais supportées",
+        boards_sub: "Fonctionne immédiatement avec les cartes relais populaires pour Raspberry Pi. D'autres cartes sont ajoutées régulièrement.",
+        boards_request_h: "Vous ne voyez pas votre carte ?",
+        boards_request_p: "Contactez-nous et nous ajouterons le support pour votre carte relais.",
+        boards_request_btn: "Demander une carte →",
+        ha_with: "Fonctionne parfaitement avec",
+        ha_p: "Connectez Sprinqua à votre broker MQTT et toutes les zones d'arrosage apparaissent automatiquement dans Home Assistant comme des switchs — sans configuration manuelle.",
+        ha_li1: 'Auto-découverte MQTT pour toutes les zones comme entités <code class="font-mono bg-slate-200 px-1 py-0.5 rounded text-xs">switch</code>',
+        ha_li2: "Entité sélecteur de mode — basculez entre <strong>Autonome</strong> et <strong>Géré par Home Assistant</strong> directement depuis HA",
+        ha_li3: "En mode Géré par HA, les plannings internes sont suspendus et HA prend le contrôle total via MQTT",
+        ha_li4: "Toutes les activations déclenchées par HA sont enregistrées dans l'historique avec le tag MQTT",
+        how_h2: "Opérationnel en quelques minutes",
+        how_p: "Un assistant de configuration guidé vous accompagne dans la sélection de la carte, la configuration des zones et le test des relais — avant même de toucher un planning.",
+        how_1_h: "Sélectionner la Carte", how_1_p: "Choisissez votre carte relais dans la liste des cartes supportées",
+        how_2_h: "Nommer les Zones", how_2_p: "Associez des canaux à des zones avec un type et une limite de sécurité",
+        how_3_h: "Tester les Relais", how_3_p: "Pulsez chaque relais 3s pour vérifier le câblage physique",
+        how_4_h: "Arroser", how_4_p: "Définissez des plannings, activez l'Arrosage Intelligent, c'est prêt",
+        oss_h2: "Gratuit et open-source",
+        oss_p: "Sprinqua est distribué sous la licence GPL-3.0. Forkez-le, étendez-le, ajoutez votre carte, traduisez une nouvelle langue. Les contributions sont les bienvenues.",
+        oss_btn_github: "Voir sur GitHub", oss_btn_issue: "Signaler un Problème"
+      },
+      de: {
+        meta_title: "Sprinqua — Intelligenter Bewässerungscontroller",
+        meta_desc: "Open-Source-Bewässerungscontroller für Raspberry Pi. Planen Sie Bewässerungszonen, überspringen Sie Regentage mit Smart Watering und integrieren Sie Home Assistant per MQTT. Keine Cloud erforderlich.",
+        nav_features: "Funktionen", nav_boards: "Boards", nav_ha: "Home Assistant",
+        hero_h1: "Intelligente Bewässerung<br>für Raspberry Pi",
+        hero_p: "Sprinqua ist ein selbst gehosteter Bewässerungscontroller, der auf Orbit OS läuft. Planen Sie Zonen, überspringen Sie die Bewässerung bei Regen und integrieren Sie Home Assistant — alles über eine saubere Web-Oberfläche in Ihrem lokalen Netzwerk.",
+        hero_btn_github: "Auf GitHub starten", hero_btn_learn: "Funktionen ansehen",
+        stat_languages: "Sprachen", stat_boards: "Relais-Boards", stat_cloud: "Cloud-Abh.",
+        feat_h2: "Alles was Sie brauchen, nichts mehr",
+        feat_h2_sub: "Läuft vollständig in Ihrem lokalen Netzwerk. Kein Cloud-Konto, kein Abonnement, keine Daten verlassen Ihr Zuhause.",
+        feat_zones_h3: "Zonensteuerung",
+        feat_zones_p: "Zonen manuell ein-/ausschalten, einen 5-Minuten-Impuls ausführen oder Zeitpläne alles erledigen lassen. Sicherheits-Abschaltung pro Zone.",
+        feat_sched_h3: "Flexible Zeitplanung",
+        feat_sched_p: "Wöchentliche Zeitpläne pro Zone mit Wochentagsauswahl, individueller Startzeit und Dauer. Grafische Wochensübersicht.",
+        feat_smart_h3: "Intelligente Bewässerung",
+        feat_smart_p: "Integriert sich mit Open-Meteo (kostenlos, kein API-Schlüssel), um die Bewässerung zu überspringen, wenn Regen oberhalb Ihres Schwellenwerts vorhergesagt wird.",
+        feat_hist_h3: "Aktivierungshistorie",
+        feat_hist_p: "Vollständiges Protokoll jeder Ausführung — manuell, geplant, MQTT oder übersprungen. 7-Tage-Statistiken, 24h-Zeitachse und Sichtbarkeit übersprungener Ausführungen.",
+        feat_mqtt_h3: "MQTT und Home Assistant",
+        feat_mqtt_p: "Auto-Discovery für alle Zonen als HA-Schalter. Wählen Sie zwischen Standalone- und HA-verwaltetem Modus — wechseln Sie live direkt aus HA.",
+        feat_i18n_h3: "6 Sprachen",
+        feat_i18n_p: "Vollständige Benutzeroberfläche auf Deutsch, Englisch, Portugiesisch, Spanisch, Französisch und Italienisch. Sprache automatisch erkannt oder manuell eingestellt.",
+        prev_h2: "Alles im Griff",
+        prev_p: "Ein Überblick über die Sprinqua-App — vom Ein- und Ausschalten von Zonen über die Planung automatischer Läufe bis hin zur Verlaufsverfolgung und Feinabstimmung. Alles über eine saubere mobile Oberfläche, die vollständig auf Ihrem Gerät läuft.",
+        prev_tab_zones: "💧 Zonen", prev_tab_history: "📋 Verlauf", prev_tab_schedule: "🗓 Zeitplan", prev_tab_settings: "⚙ Einstellungen",
+        boards_h2: "Unterstützte Relais-Boards",
+        boards_sub: "Funktioniert sofort mit beliebten Relais-HATs für Raspberry Pi. Weitere Boards werden regelmäßig hinzugefügt.",
+        boards_request_h: "Ihr Board nicht dabei?",
+        boards_request_p: "Nehmen Sie Kontakt auf und wir fügen Unterstützung für Ihr Relais-Board hinzu.",
+        boards_request_btn: "Board anfragen →",
+        ha_with: "Funktioniert nahtlos mit",
+        ha_p: "Verbinden Sie Sprinqua mit Ihrem MQTT-Broker und alle Bewässerungszonen erscheinen automatisch in Home Assistant als Schalter — keine manuelle Konfiguration erforderlich.",
+        ha_li1: 'MQTT Auto-Discovery für alle Zonen als <code class="font-mono bg-slate-200 px-1 py-0.5 rounded text-xs">switch</code>-Entitäten',
+        ha_li2: "Modus-Selektor-Entität — wechseln Sie zwischen <strong>Standalone</strong> und <strong>Home Assistant verwaltet</strong> direkt aus HA",
+        ha_li3: "Im HA-verwalteten Modus werden interne Zeitpläne pausiert und HA übernimmt die volle Kontrolle per MQTT",
+        ha_li4: "Alle von HA ausgelösten Aktivierungen werden im Verlauf mit MQTT-Tag protokolliert",
+        how_h2: "In Minuten einsatzbereit",
+        how_p: "Ein geführter Einrichtungsassistent führt Sie durch Board-Auswahl, Zonenkonfiguration und Relais-Test — bevor Sie einen Zeitplan erstellen.",
+        how_1_h: "Board auswählen", how_1_p: "Wählen Sie Ihr Relais-HAT aus der Liste der unterstützten Boards",
+        how_2_h: "Zonen benennen", how_2_p: "Kanäle Zonen mit Typ und Sicherheitslimit zuordnen",
+        how_3_h: "Relais testen", how_3_p: "Jeden Relais 3s pulsen, um die physische Verdrahtung zu prüfen",
+        how_4_h: "Bewässern", how_4_p: "Zeitpläne festlegen, Smart Watering aktivieren, fertig",
+        oss_h2: "Kostenlos und Open-Source",
+        oss_p: "Sprinqua wird unter der GPL-3.0-Lizenz veröffentlicht. Forken Sie es, erweitern Sie es, fügen Sie Ihr Board hinzu, übersetzen Sie eine neue Sprache. Beiträge sind willkommen.",
+        oss_btn_github: "Auf GitHub ansehen", oss_btn_issue: "Fehler melden"
+      },
+      it: {
+        meta_title: "Sprinqua — Controller Irrigazione Intelligente",
+        meta_desc: "Controller per irrigazione open-source per Raspberry Pi. Programma zone, salta i giorni di pioggia con l'Irrigazione Intelligente e integra con Home Assistant via MQTT. Senza cloud.",
+        nav_features: "Funzionalità", nav_boards: "Schede", nav_ha: "Home Assistant",
+        hero_h1: "Irrigazione Intelligente<br>per Raspberry Pi",
+        hero_p: "Sprinqua è un controller per irrigazione self-hosted che gira su Orbit OS. Programma zone, salta l'irrigazione quando piove e integra con Home Assistant — tutto da un'interfaccia web pulita sulla tua rete locale.",
+        hero_btn_github: "Inizia su GitHub", hero_btn_learn: "Vedi le Funzionalità",
+        stat_languages: "Lingue", stat_boards: "Schede Relay", stat_cloud: "Dip. Cloud",
+        feat_h2: "Tutto quello che ti serve, nient'altro",
+        feat_h2_sub: "Gira interamente sulla tua rete locale. Nessun account cloud, nessun abbonamento, nessun dato esce da casa tua.",
+        feat_zones_h3: "Controllo Zone",
+        feat_zones_p: "Accendi/spegni zone manualmente, esegui un impulso da 5 minuti, o lascia che i programmi gestiscano tutto. Spegnimento automatico di sicurezza per zona.",
+        feat_sched_h3: "Programmazione Flessibile",
+        feat_sched_p: "Programmi settimanali per zona con selezione dei giorni, orario di inizio e durata personalizzabili. Visualizzazione grafica settimanale.",
+        feat_smart_h3: "Irrigazione Intelligente",
+        feat_smart_p: "Si integra con Open-Meteo (gratuito, nessuna API key) per saltare l'irrigazione quando è prevista pioggia sopra la tua soglia.",
+        feat_hist_h3: "Cronologia Attivazioni",
+        feat_hist_p: "Registro completo di ogni esecuzione — manuale, programmata, MQTT o saltata. Statistiche 7 giorni, grafico 24h e visibilità delle irrigazioni saltate.",
+        feat_mqtt_h3: "MQTT e Home Assistant",
+        feat_mqtt_p: "Auto-discovery per tutte le zone come switch in HA. Scegli la modalità Autonoma o Gestita da HA — cambia in tempo reale da HA stesso.",
+        feat_i18n_h3: "6 Lingue",
+        feat_i18n_p: "Interfaccia completa in Italiano, Inglese, Portoghese, Spagnolo, Francese e Tedesco. Lingua rilevata automaticamente o configurata manualmente.",
+        prev_h2: "Tutto sotto controllo",
+        prev_p: "Una panoramica dell'app Sprinqua — dall'accensione e spegnimento delle zone alla programmazione di irrigazioni automatiche, dal monitoraggio della cronologia alla regolazione della configurazione. Tutto da un'interfaccia mobile che gira interamente sul tuo dispositivo.",
+        prev_tab_zones: "💧 Zone", prev_tab_history: "📋 Cronologia", prev_tab_schedule: "🗓 Programmi", prev_tab_settings: "⚙ Impostazioni",
+        boards_h2: "Schede relay supportate",
+        boards_sub: "Funziona immediatamente con le schede relay più diffuse per Raspberry Pi. Nuove schede vengono aggiunte regolarmente.",
+        boards_request_h: "Non vedi la tua scheda?",
+        boards_request_p: "Contattaci e aggiungeremo il supporto per la tua scheda relay.",
+        boards_request_btn: "Richiedi una scheda →",
+        ha_with: "Funziona perfettamente con",
+        ha_p: "Collega Sprinqua al tuo broker MQTT e tutte le zone di irrigazione appaiono automaticamente in Home Assistant come switch — nessuna configurazione manuale richiesta.",
+        ha_li1: 'Auto-discovery MQTT per tutte le zone come entità <code class="font-mono bg-slate-200 px-1 py-0.5 rounded text-xs">switch</code>',
+        ha_li2: "Entità selettore di modalità — passa tra <strong>Autonomo</strong> e <strong>Gestito da Home Assistant</strong> direttamente da HA",
+        ha_li3: "In modalità Gestita da HA, i programmi interni vengono sospesi e HA prende il controllo totale via MQTT",
+        ha_li4: "Tutte le attivazioni avviate da HA vengono registrate nella cronologia con il tag MQTT",
+        how_h2: "Operativo in pochi minuti",
+        how_p: "Un assistente di configurazione guidato ti porta attraverso la selezione della scheda, la configurazione delle zone e il test dei relay — prima ancora di toccare un programma.",
+        how_1_h: "Seleziona la Scheda", how_1_p: "Scegli la tua scheda relay dall'elenco delle schede supportate",
+        how_2_h: "Nomina le Zone", how_2_p: "Associa i canali alle zone con tipo e limite di sicurezza",
+        how_3_h: "Testa i Relay", how_3_p: "Pulsa ogni relay per 3s per verificare il cablaggio fisico",
+        how_4_h: "Irrigazione", how_4_p: "Imposta i programmi, attiva l'Irrigazione Intelligente, fatto",
+        oss_h2: "Gratuito e open-source",
+        oss_p: "Sprinqua è rilasciato sotto licenza GPL-3.0. Fai un fork, estendilo, aggiungi la tua scheda, traduci una nuova lingua. I contributi sono benvenuti.",
+        oss_btn_github: "Vedi su GitHub", oss_btn_issue: "Segnala un Problema"
+      }
+    };
+
+    function applyLang(lang) {
+      var t = T[lang] || T['en'];
+      document.documentElement.lang = lang;
+      if (t.meta_title) document.title = t.meta_title;
+      var md = document.getElementById('meta-desc');
+      if (md && t.meta_desc) md.setAttribute('content', t.meta_desc);
+      document.querySelectorAll('[data-i18n]').forEach(function(el) {
+        var key = el.getAttribute('data-i18n');
+        if (t[key] !== undefined) el.textContent = t[key];
+      });
+      document.querySelectorAll('[data-i18ni]').forEach(function(el) {
+        var key = el.getAttribute('data-i18ni');
+        if (t[key] !== undefined) el.innerHTML = t[key];
+      });
+      var sel = document.getElementById('lang-sel');
+      if (sel) sel.value = lang;
+      var selm = document.getElementById('lang-sel-mobile');
+      if (selm) selm.value = lang;
+    }
+
+    window.setLang = function(val) {
+      if (!T[val]) return;
+      localStorage.setItem('sprinqua_lang', val);
+      var url = new URL(window.location.href);
+      url.searchParams.set('lang', val);
+      history.replaceState(null, '', url.toString());
+      applyLang(val);
+    };
+
+    var params = new URLSearchParams(window.location.search);
+    var lang = params.get('lang') || localStorage.getItem('sprinqua_lang') || (navigator.language || '').slice(0, 2) || 'en';
+    if (!T[lang]) lang = 'en';
+    applyLang(lang);
+  })();
+  </script>
+
+  <script>
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+      a.addEventListener('click', e => {
+        e.preventDefault();
+        document.querySelector(a.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+  </script>
+
+  <script>
+    function toggleMenu() {
+      var m = document.getElementById('mobile-menu');
+      var o = document.getElementById('icon-open');
+      var c = document.getElementById('icon-close');
+      m.classList.toggle('hidden');
+      o.classList.toggle('hidden');
+      c.classList.toggle('hidden');
+    }
+    function closeMenu() {
+      document.getElementById('mobile-menu').classList.add('hidden');
+      document.getElementById('icon-open').classList.remove('hidden');
+      document.getElementById('icon-close').classList.add('hidden');
+    }
+  </script>
+</body>
+</html>

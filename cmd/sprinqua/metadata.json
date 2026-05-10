@@ -1,11 +1,10 @@
 {
-  "package_id": "org.orbit-os.app.sprinkl",
-  "name": "Sprinkl",
+  "package_id": "com.sprinqua.sprinqua",
+  "name": "Sprinqua",
   "version": "0.1.0",
   "description": "Smart irrigation controller for Raspberry Pi relay boards",
   "permissions": [
-    "SystemService/*",
     "GpioService/*",
-    "AppHubService/*"
+    "SystemService/*"
   ]
 }

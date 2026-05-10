@@ -1,0 +1,31 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- background gradient -->
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8a8a8a"/>
+      <stop offset="100%" stop-color="#5a5a5a"/>
+    </linearGradient>
+  </defs>
+
+  <!-- background -->
+  <rect x="0" y="0" width="64" height="64"
+        rx="12" ry="12"
+        fill="url(#bg)" stroke="#8f8f8f" stroke-width="1.2"/>
+
+  <!-- modern settings sliders -->
+  <g stroke="#000000" stroke-width="3" stroke-linecap="round">
+
+    <!-- line 1 -->
+    <line x1="16" y1="22" x2="48" y2="22"/>
+    <circle cx="28" cy="22" r="3" fill="#000000"/>
+
+    <!-- line 2 -->
+    <line x1="16" y1="32" x2="48" y2="32"/>
+    <circle cx="38" cy="32" r="3" fill="#000000"/>
+
+    <!-- line 3 -->
+    <line x1="16" y1="42" x2="48" y2="42"/>
+    <circle cx="24" cy="42" r="3" fill="#000000"/>
+
+  </g>
+</svg>

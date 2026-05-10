@@ -17,11 +17,6 @@
       <div class="w-8 h-8 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">3</div>
       <span class="hidden sm:inline text-xs font-semibold text-emerald-600">{{.S.progress_test}}</span>
     </div>
-    <div class="flex-1 h-px bg-slate-200 mx-1.5"></div>
-    <div class="flex items-center gap-1.5 flex-shrink-0">
-      <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-400 text-xs font-bold flex items-center justify-center">4</div>
-      <span class="hidden sm:inline text-xs text-slate-400">{{.S.progress_mqtt}}</span>
-    </div>
   </div>
 
   <h2 class="text-lg font-semibold text-slate-800 mb-1">{{.S.step3_title}}</h2>
@@ -54,7 +49,7 @@
   <form hx-post="/setup/step/3" hx-target="#wizard-content" hx-swap="innerHTML">
     <button type="submit"
       class="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold py-3 px-4 rounded-xl transition-colors text-sm">
-      {{.S.btn_continue}}
+      {{.S.btn_finish}}
     </button>
   </form>
 </div>
