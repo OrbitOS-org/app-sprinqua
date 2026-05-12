@@ -38,7 +38,8 @@
         <a href="#features" data-i18n="nav_features" class="text-sm text-slate-500 hover:text-slate-900 transition-colors hidden sm:block">Features</a>
         <a href="#boards" data-i18n="nav_boards" class="text-sm text-slate-500 hover:text-slate-900 transition-colors hidden sm:block">Boards</a>
         <a href="#ha" data-i18n="nav_ha" class="text-sm text-slate-500 hover:text-slate-900 transition-colors hidden sm:block">Home Assistant</a>
-        <a href="install.html" class="text-sm text-slate-500 hover:text-slate-900 transition-colors hidden sm:block">Install</a>
+        <a href="install.html" data-i18n="nav_install" class="text-sm text-slate-500 hover:text-slate-900 transition-colors hidden sm:block">Install</a>
+        <a href="#contact" data-i18n="nav_contact" class="text-sm text-slate-500 hover:text-slate-900 transition-colors hidden sm:block">Contact</a>
         <div class="hidden sm:flex items-center gap-2">
           <a href="https://orbit-os.org" class="hidden sm:inline-flex items-center bg-slate-900 px-2 h-8 rounded-full hover:bg-slate-700 transition-colors">
             <img src="site_img/orbitos.png" alt="Orbit OS" class="h-5 object-contain">
@@ -67,7 +68,8 @@
         <a href="#features" data-i18n="nav_features" onclick="closeMenu()" class="text-sm text-slate-700 hover:text-slate-900 py-2 border-b border-slate-100">Features</a>
         <a href="#boards" data-i18n="nav_boards" onclick="closeMenu()" class="text-sm text-slate-700 hover:text-slate-900 py-2 border-b border-slate-100">Boards</a>
         <a href="#ha" data-i18n="nav_ha" onclick="closeMenu()" class="text-sm text-slate-700 hover:text-slate-900 py-2 border-b border-slate-100">Home&#160;Assistant</a>
-        <a href="install.html" onclick="closeMenu()" class="text-sm text-slate-700 hover:text-slate-900 py-2 border-b border-slate-100">Install</a>
+        <a href="install.html" onclick="closeMenu()" data-i18n="nav_install" class="text-sm text-slate-700 hover:text-slate-900 py-2 border-b border-slate-100">Install</a>
+        <a href="#contact" data-i18n="nav_contact" onclick="closeMenu()" class="text-sm text-slate-700 hover:text-slate-900 py-2 border-b border-slate-100">Contact</a>
         <div class="flex items-center gap-3 pt-3">
           <a href="https://orbit-os.org" class="inline-flex items-center bg-slate-900 px-2 h-8 rounded-full hover:bg-slate-700 transition-colors">
             <img src="site_img/orbitos.png" alt="Orbit OS" class="h-5 object-contain">
@@ -809,6 +811,19 @@
           </div>
         </div>
 
+        <!-- BC Robotics RAS-193 -->
+        <div class="rounded-2xl border-2 border-slate-200 overflow-hidden card-hover">
+          <div class="px-6 pt-6 pb-3">
+            <div class="text-2xl">🟢</div>
+          </div>
+          <img src="site_img/RAS-193.jpg" alt="BC Robotics 4-Channel Relay HAT" class="w-full h-40 object-cover">
+          <div class="p-6">
+            <h3 class="font-semibold text-slate-900 mb-1">BC Robotics 4-Channel Relay HAT</h3>
+            <p class="text-xs text-slate-400 font-mono mb-3">SKU: RAS-193</p>
+            <p class="text-sm text-slate-500">4-Channel Relay HAT for Raspberry Pi from BC Robotics. Works well for compact outdoor layouts that need four separate watering zones.</p>
+          </div>
+        </div>
+
         <!-- 6-channel -->
         <div class="rounded-2xl border-2 border-slate-200 overflow-hidden card-hover">
           <div class="px-6 pt-6 pb-3">
@@ -858,7 +873,7 @@
             <p data-i18n="boards_request_p" class="text-sm text-slate-500 mt-0.5">Get in touch and we'll add support for your relay board.</p>
           </div>
         </div>
-        <a href="https://github.com/OrbitOS-org/sprinqua/issues/new?title=Board+support+request"
+        <a href="#contact"
            class="flex-shrink-0 text-sm font-semibold bg-slate-900 text-white px-5 py-2.5 rounded-xl hover:bg-slate-700 transition-colors">
           <span data-i18n="boards_request_btn">Request a board →</span>
         </a>
@@ -952,7 +967,7 @@
     <div class="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
       <div>
         <p class="text-xl font-bold mb-1">Ready to get started?</p>
-        <p class="text-emerald-100 text-sm leading-relaxed">Install Sprinqua on your Raspberry Pi in under 10 minutes. Step-by-step guide included.</p>
+        <p class="text-emerald-100 text-sm leading-relaxed">Install Sprinqua on your Raspberry Pi in under 5 minutes. Step-by-step guide included.</p>
       </div>
       <a href="install.html" class="flex-shrink-0 flex items-center gap-2 bg-white text-emerald-700 font-semibold px-6 py-3 rounded-xl hover:bg-emerald-50 transition-colors shadow-sm">
         Installation Guide →
@@ -975,6 +990,30 @@
           <span data-i18n="oss_btn_issue">Report an Issue</span>
         </a>
       </div>
+    </div>
+  </section>
+
+  <!-- Contact -->
+  <section id="contact" class="py-20 px-6 bg-slate-50">
+    <div class="max-w-5xl mx-auto">
+      <div class="text-center mb-10">
+        <h2 data-i18n="contact_h2" class="text-3xl font-bold text-slate-900 mb-3">Need help?</h2>
+        <p data-i18n="contact_p" class="text-slate-500 max-w-2xl mx-auto leading-relaxed">Have a question, partnership idea, or board request—including support for a specific relay board? Send us a message and we’ll get back to you.</p>
+      </div>
+      <form id="contact-form" class="grid grid-cols-1 gap-4">
+        <input type="hidden" name="access_key" value="5068cc6d-db1d-41c6-acac-092434b24257" />
+        <input type="hidden" name="subject" value="Sprinqua — Contact request" />
+        <input type="hidden" name="from_name" value="Sprinqua website" />
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <input type="text" name="name" placeholder="Your name" required autocomplete="name" class="px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          <input type="email" name="email" placeholder="Your email" required autocomplete="email" class="px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+        </div>
+        <textarea name="message" rows="5" placeholder="Tell us how we can help..." required class="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <button id="contact-submit" type="submit" data-i18n="contact_btn" class="inline-flex items-center justify-center rounded-2xl bg-emerald-600 px-6 py-3 text-white font-semibold hover:bg-emerald-500 transition-colors">Contact Team</button>
+          <p id="contact-form-status" role="status" aria-live="polite" class="text-sm text-slate-500 hidden"></p>
+        </div>
+      </form>
     </div>
   </section>
 
@@ -1045,7 +1084,15 @@
         how_4_h: "Water", how_4_p: "Set schedules, enable Smart Watering, done",
         oss_h2: "Free and open source",
         oss_p: "Sprinqua is released under the GPL-3.0 license. Fork it, extend it, add your board, translate a new language. Contributions are welcome.",
-        oss_btn_github: "View on GitHub", oss_btn_issue: "Report an Issue"
+        oss_btn_github: "View on GitHub", oss_btn_issue: "Report an Issue",
+        nav_install: "Install",
+        nav_contact: "Contact",
+        contact_h2: "Need help?",
+        contact_p: "Have a question, partnership idea, or board request—including support for a specific relay board? Send us a message and we’ll get back to you.",
+        contact_btn: "Contact Team",
+        contact_sent: "Thanks — your message has been sent.",
+        contact_failed: "Something went wrong. Please try again.",
+        contact_network_error: "Network error. Please try again."
       },
       pt: {
         meta_title: "Sprinqua — Controlador de Rega Inteligente",
@@ -1091,7 +1138,15 @@
         how_4_h: "Rega", how_4_p: "Define horários, ativa a Rega Inteligente, pronto",
         oss_h2: "Gratuito e open-source",
         oss_p: "O Sprinqua é distribuído sob a licença GPL-3.0. Faz fork, expande, adiciona a tua placa, traduz um novo idioma. Contribuições são bem-vindas.",
-        oss_btn_github: "Ver no GitHub", oss_btn_issue: "Reportar um Problema"
+        oss_btn_github: "Ver no GitHub", oss_btn_issue: "Reportar um Problema",
+        nav_install: "Instalar",
+        nav_contact: "Contacto",
+        contact_h2: "Precisa de ajuda?",
+        contact_p: "Tem uma pergunta, ideia de parceria, pedido de placa ou quer solicitar suporte para uma placa relay específica? Envie-nos uma mensagem e responderemos em breve.",
+        contact_btn: "Contactar", 
+        contact_sent: "Obrigado — a sua mensagem foi enviada.",
+        contact_failed: "Algo correu mal. Por favor, tente novamente.",
+        contact_network_error: "Erro de rede. Por favor, tente novamente."
       },
       es: {
         meta_title: "Sprinqua — Controlador de Riego Inteligente",
@@ -1137,7 +1192,15 @@
         how_4_h: "Riega", how_4_p: "Define horarios, activa el Riego Inteligente, listo",
         oss_h2: "Gratis y open-source",
         oss_p: "Sprinqua se distribuye bajo la licencia GPL-3.0. Haz un fork, amplíalo, añade tu placa, traduce un nuevo idioma. Las contribuciones son bienvenidas.",
-        oss_btn_github: "Ver en GitHub", oss_btn_issue: "Reportar un Problema"
+        oss_btn_github: "Ver en GitHub", oss_btn_issue: "Reportar un Problema",
+        nav_install: "Instalar",
+        nav_contact: "Contacto",
+        contact_h2: "¿Necesitas ayuda?",
+        contact_p: "¿Tienes una pregunta, idea de colaboración, solicitud de placa o quieres pedir soporte para una placa relay concreta? Envíanos un mensaje y te responderemos pronto.",
+        contact_btn: "Contactar",
+        contact_sent: "Gracias — tu mensaje ha sido enviado.",
+        contact_failed: "Algo salió mal. Por favor, inténtalo de nuevo.",
+        contact_network_error: "Error de red. Por favor, inténtalo de nuevo."
       },
       fr: {
         meta_title: "Sprinqua — Contrôleur d'Irrigation Intelligent",
@@ -1183,7 +1246,15 @@
         how_4_h: "Arroser", how_4_p: "Définissez des plannings, activez l'Arrosage Intelligent, c'est prêt",
         oss_h2: "Gratuit et open-source",
         oss_p: "Sprinqua est distribué sous la licence GPL-3.0. Forkez-le, étendez-le, ajoutez votre carte, traduisez une nouvelle langue. Les contributions sont les bienvenues.",
-        oss_btn_github: "Voir sur GitHub", oss_btn_issue: "Signaler un Problème"
+        oss_btn_github: "Voir sur GitHub", oss_btn_issue: "Signaler un Problème",
+        nav_install: "Installer",
+        nav_contact: "Contact",
+        contact_h2: "Besoin d'aide ?",
+        contact_p: "Une question, une idée de partenariat, une demande de carte ou l’envie de demander la prise en charge d’une carte relais précise ? Envoyez-nous un message et nous vous répondrons rapidement.",
+        contact_btn: "Contacter",
+        contact_sent: "Merci — votre message a été envoyé.",
+        contact_failed: "Quelque chose s'est mal passé. Veuillez réessayer.",
+        contact_network_error: "Erreur réseau. Veuillez réessayer."
       },
       de: {
         meta_title: "Sprinqua — Intelligenter Bewässerungscontroller",
@@ -1229,7 +1300,15 @@
         how_4_h: "Bewässern", how_4_p: "Zeitpläne festlegen, Smart Watering aktivieren, fertig",
         oss_h2: "Kostenlos und Open-Source",
         oss_p: "Sprinqua wird unter der GPL-3.0-Lizenz veröffentlicht. Forken Sie es, erweitern Sie es, fügen Sie Ihr Board hinzu, übersetzen Sie eine neue Sprache. Beiträge sind willkommen.",
-        oss_btn_github: "Auf GitHub ansehen", oss_btn_issue: "Fehler melden"
+        oss_btn_github: "Auf GitHub ansehen", oss_btn_issue: "Fehler melden",
+        nav_install: "Installieren",
+        nav_contact: "Kontakt",
+        contact_h2: "Brauchen Sie Hilfe?",
+        contact_p: "Fragen, Partnerschaftsidee, allgemeine Board-Anfrage oder Unterstützung für eine bestimmte Relais-Platine? Senden Sie uns eine Nachricht und wir melden uns zurück.",
+        contact_btn: "Kontaktieren",
+        contact_sent: "Danke — Ihre Nachricht wurde gesendet.",
+        contact_failed: "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+        contact_network_error: "Netzwerkfehler. Bitte versuchen Sie es erneut."
       },
       it: {
         meta_title: "Sprinqua — Controller Irrigazione Intelligente",
@@ -1275,9 +1354,19 @@
         how_4_h: "Irrigazione", how_4_p: "Imposta i programmi, attiva l'Irrigazione Intelligente, fatto",
         oss_h2: "Gratuito e open-source",
         oss_p: "Sprinqua è rilasciato sotto licenza GPL-3.0. Fai un fork, estendilo, aggiungi la tua scheda, traduci una nuova lingua. I contributi sono benvenuti.",
-        oss_btn_github: "Vedi su GitHub", oss_btn_issue: "Segnala un Problema"
+        oss_btn_github: "Vedi su GitHub", oss_btn_issue: "Segnala un Problema",
+        nav_install: "Installa",
+        nav_contact: "Contatto",
+        contact_h2: "Hai bisogno di aiuto?",
+        contact_p: "Hai una domanda, un'idea di partnership, una richiesta di scheda o vuoi chiedere il supporto per una scheda relay specifica? Inviaci un messaggio e ti risponderemo presto.",
+        contact_btn: "Contatta",
+        contact_sent: "Grazie — il tuo messaggio è stato inviato.",
+        contact_failed: "Qualcosa è andato storto. Per favore riprova.",
+        contact_network_error: "Errore di rete. Per favore riprova."
       }
     };
+
+    window.sprinquaT = T;
 
     function applyLang(lang) {
       var t = T[lang] || T['en'];
@@ -1338,6 +1427,51 @@
       document.getElementById('mobile-menu').classList.add('hidden');
       document.getElementById('icon-open').classList.remove('hidden');
       document.getElementById('icon-close').classList.add('hidden');
+    }
+
+    var contactForm = document.getElementById('contact-form');
+    var contactStatus = document.getElementById('contact-form-status');
+    var contactSubmit = document.getElementById('contact-submit');
+
+    if (contactForm && contactStatus && contactSubmit) {
+      contactForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        contactSubmit.disabled = true;
+        contactStatus.hidden = true;
+
+        var formData = new FormData(contactForm);
+        fetch('https://api.web3forms.com/submit', {
+          method: 'POST',
+          body: formData
+        })
+          .then(function(response) { return response.json(); })
+          .then(function(data) {
+            var lang = document.documentElement.lang || 'en';
+            var t = window.sprinquaT ? window.sprinquaT[lang] || window.sprinquaT['en'] : null;
+            var successMessage = t && t.contact_sent ? t.contact_sent : 'Thanks — your message has been sent.';
+            var failureMessage = t && t.contact_failed ? t.contact_failed : 'Something went wrong. Please try again.';
+
+            contactStatus.hidden = false;
+            if (data.success) {
+              contactStatus.className = 'text-emerald-600 text-sm';
+              contactStatus.textContent = successMessage;
+              contactForm.reset();
+            } else {
+              contactStatus.className = 'text-rose-600 text-sm';
+              contactStatus.textContent = failureMessage;
+            }
+          })
+          .catch(function() {
+            var lang = document.documentElement.lang || 'en';
+            var t = window.sprinquaT ? window.sprinquaT[lang] || window.sprinquaT['en'] : null;
+            contactStatus.hidden = false;
+            contactStatus.className = 'text-rose-600 text-sm';
+            contactStatus.textContent = t && t.contact_network_error ? t.contact_network_error : 'Network error. Please try again.';
+          })
+          .finally(function() {
+            contactSubmit.disabled = false;
+          });
+      });
     }
   </script>
 </body>
