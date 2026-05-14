@@ -23,7 +23,7 @@
 | Settings page (separada do wizard) | ✅ Implementado |
 | Smart Watering (Open-Meteo, mapa, threshold) | ✅ Implementado |
 | MQTT — config guardada | ✅ Implementado |
-| MQTT — cliente publicação/subscrição HA | ⬜ Não implementado |
+| MQTT — cliente publicação/subscrição HA | ✅ Implementado |
 | MaxSecs enforcement no engine | ⬜ Não implementado |
 | Pulse duration configurável | ⬜ Não implementado |
 | Filtros e estatísticas no histórico | ⬜ Não implementado |
