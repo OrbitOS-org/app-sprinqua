@@ -118,7 +118,7 @@
   "steps_h2": "Pasos de instalación",
   "ts_a1": "Asegúrate de que el ordenador y el Raspberry Pi están en la misma red local. Prueba con la dirección IP en lugar del nombre de host. Revisa el panel de Orbit OS para confirmar que Sprinqua está en ejecución.",
   "ts_a2": "Comprueba que la placa de relés tiene alimentación (muchos modelos necesitan 5 V externos además del GPIO). Verifica el cableado COM/NA/NC según tu válvula. El clic confirma el GPIO; el fallo está aguas abajo.",
-  "ts_a3": "Asegúrate de haber elegido el modelo exacto en el asistente. Algunas revisiones cambian el mapeo GPIO. Usa Ajustes → Volver a ejecutar el asistente de hardware. Si tu placa no está en la lista, <a href=\"https://github.com/OrbitOS-org/sprinqua/issues/new?title=Board+support+request\" class=\"text-emerald-600 hover:underline\">abre una solicitud de placa</a>.",
+  "ts_a3": "Asegúrate de haber elegido el modelo exacto en el asistente. Algunas revisiones cambian el mapeo GPIO. Usa Ajustes → Volver a ejecutar el asistente de hardware. Si tu placa no está en la lista, <a href=\"https://github.com/OrbitOS-org/app-sprinqua/issues/new?title=Board+support+request\" class=\"text-emerald-600 hover:underline\">abre una solicitud de placa</a>.",
   "ts_a4": "Confirma que el riego inteligente está activado en Ajustes y que las coordenadas están definidas. La comprobación ocurre ~1 h antes de un riego programado. Open-Meteo necesita internet en el Raspberry Pi: verifica la conectividad.",
   "ts_h2": "Solución de problemas",
   "ts_q1": "No puedo acceder a la interfaz web",

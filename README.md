@@ -45,7 +45,7 @@ Sprinqua is an [Orbit OS](https://www.orbit-os.org) app. Orbit OS is a lightweig
 To build Sprinqua you need [Orbit Studio](https://www.orbit-os.org/getting_started.html) — the VS Code extension that provides project scaffolding, local development against a real device over TCP/mTLS, and one-click build and deploy. You also need Go installed on your machine.
 
 ```bash
-git clone https://github.com/OrbitOS-org/sprinqua
+git clone https://github.com/OrbitOS-org/app-sprinqua
 cd sprinqua
 go work sync
 go mod tidy

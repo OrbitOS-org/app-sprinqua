@@ -118,7 +118,7 @@
   "steps_h2": "Installation steps",
   "ts_a1": "Make sure your computer and the Raspberry Pi are on the same local network. Try using the device's IP address instead of the hostname. Check the Orbit OS dashboard to confirm Sprinqua is running.",
   "ts_a2": "Check that the relay board is powered (many boards need an external 5V supply in addition to GPIO). Verify that the COM/NO/NC wiring is correct for your valve type. The relay click sound confirms GPIO is working — the issue is downstream.",
-  "ts_a3": "Make sure you selected the exact board model in the wizard. Different board revisions sometimes use different GPIO layouts. Use Settings → Re-run Hardware Wizard to reconfigure. If your board isn't listed, <a href=\"https://github.com/OrbitOS-org/sprinqua/issues/new?title=Board+support+request\" class=\"text-emerald-600 hover:underline\">open a board request</a>.",
+  "ts_a3": "Make sure you selected the exact board model in the wizard. Different board revisions sometimes use different GPIO layouts. Use Settings → Re-run Hardware Wizard to reconfigure. If your board isn't listed, <a href=\"https://github.com/OrbitOS-org/app-sprinqua/issues/new?title=Board+support+request\" class=\"text-emerald-600 hover:underline\">open a board request</a>.",
   "ts_a4": "Confirm that Smart Watering is enabled in Settings and that your location coordinates are set. The check runs ~1 hour before a scheduled run. Open-Meteo requires internet access from the Raspberry Pi — verify the device can reach the internet.",
   "ts_h2": "Troubleshooting",
   "ts_q1": "Can't reach the web UI",

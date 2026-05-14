@@ -118,7 +118,7 @@
   "steps_h2": "Passos de instalação",
   "ts_a1": "Certifica-te que o teu computador e o Raspberry Pi estão na mesma rede local. Tenta usar o endereço IP do dispositivo em vez do hostname. Verifica o dashboard do Orbit OS para confirmar que a Sprinqua está a correr.",
   "ts_a2": "Verifica se a board de relés está alimentada (muitas boards precisam de uma fonte externa de 5V além do GPIO). Verifica se a ligação COM/NO/NC está correta para o tipo de válvula. O som de clique do relé confirma que o GPIO está a funcionar — o problema está a jusante.",
-  "ts_a3": "Certifica-te que seleccionaste o modelo exato da board no assistente. Diferentes revisões de board às vezes usam layouts GPIO diferentes. Usa Settings → Re-correr Assistente de Hardware para reconfigurar. Se a tua board não estiver listada, <a href=\"https://github.com/OrbitOS-org/sprinqua/issues/new?title=Board+support+request\" class=\"text-emerald-600 hover:underline\">abre um pedido de board</a>.",
+  "ts_a3": "Certifica-te que seleccionaste o modelo exato da board no assistente. Diferentes revisões de board às vezes usam layouts GPIO diferentes. Usa Settings → Re-correr Assistente de Hardware para reconfigurar. Se a tua board não estiver listada, <a href=\"https://github.com/OrbitOS-org/app-sprinqua/issues/new?title=Board+support+request\" class=\"text-emerald-600 hover:underline\">abre um pedido de board</a>.",
   "ts_a4": "Confirma que a Rega Inteligente está ativada em Settings e que as coordenadas de localização estão definidas. A verificação corre ~1 hora antes de um programa agendado. O Open-Meteo requer acesso à internet do Raspberry Pi — verifica se o dispositivo consegue aceder à internet.",
   "ts_h2": "Resolução de problemas",
   "ts_q1": "Não consigo aceder à interface web",
