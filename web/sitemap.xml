@@ -114,22 +114,7 @@
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.sprinqua.com/install.html"/>
-    <xhtml:link rel="alternate" hreflang="en"        href="https://www.sprinqua.com/install.html?lang=en"/>
-    <xhtml:link rel="alternate" hreflang="pt"        href="https://www.sprinqua.com/install.html?lang=pt"/>
-    <xhtml:link rel="alternate" hreflang="es"        href="https://www.sprinqua.com/install.html?lang=es"/>
-    <xhtml:link rel="alternate" hreflang="fr"        href="https://www.sprinqua.com/install.html?lang=fr"/>
-    <xhtml:link rel="alternate" hreflang="de"        href="https://www.sprinqua.com/install.html?lang=de"/>
-    <xhtml:link rel="alternate" hreflang="it"        href="https://www.sprinqua.com/install.html?lang=it"/>
-  </url>
-
-  <!-- Install page — English -->
-  <url>
-    <loc>https://www.sprinqua.com/install.html?lang=en</loc>
-    <lastmod>2026-05-12</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.sprinqua.com/install.html"/>
-    <xhtml:link rel="alternate" hreflang="en"        href="https://www.sprinqua.com/install.html?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="en"        href="https://www.sprinqua.com/install.html"/>
     <xhtml:link rel="alternate" hreflang="pt"        href="https://www.sprinqua.com/install.html?lang=pt"/>
     <xhtml:link rel="alternate" hreflang="es"        href="https://www.sprinqua.com/install.html?lang=es"/>
     <xhtml:link rel="alternate" hreflang="fr"        href="https://www.sprinqua.com/install.html?lang=fr"/>
@@ -144,7 +129,7 @@
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.sprinqua.com/install.html"/>
-    <xhtml:link rel="alternate" hreflang="en"        href="https://www.sprinqua.com/install.html?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="en"        href="https://www.sprinqua.com/install.html"/>
     <xhtml:link rel="alternate" hreflang="pt"        href="https://www.sprinqua.com/install.html?lang=pt"/>
     <xhtml:link rel="alternate" hreflang="es"        href="https://www.sprinqua.com/install.html?lang=es"/>
     <xhtml:link rel="alternate" hreflang="fr"        href="https://www.sprinqua.com/install.html?lang=fr"/>
@@ -159,7 +144,7 @@
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.sprinqua.com/install.html"/>
-    <xhtml:link rel="alternate" hreflang="en"        href="https://www.sprinqua.com/install.html?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="en"        href="https://www.sprinqua.com/install.html"/>
     <xhtml:link rel="alternate" hreflang="pt"        href="https://www.sprinqua.com/install.html?lang=pt"/>
     <xhtml:link rel="alternate" hreflang="es"        href="https://www.sprinqua.com/install.html?lang=es"/>
     <xhtml:link rel="alternate" hreflang="fr"        href="https://www.sprinqua.com/install.html?lang=fr"/>
@@ -174,7 +159,7 @@
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.sprinqua.com/install.html"/>
-    <xhtml:link rel="alternate" hreflang="en"        href="https://www.sprinqua.com/install.html?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="en"        href="https://www.sprinqua.com/install.html"/>
     <xhtml:link rel="alternate" hreflang="pt"        href="https://www.sprinqua.com/install.html?lang=pt"/>
     <xhtml:link rel="alternate" hreflang="es"        href="https://www.sprinqua.com/install.html?lang=es"/>
     <xhtml:link rel="alternate" hreflang="fr"        href="https://www.sprinqua.com/install.html?lang=fr"/>
@@ -189,7 +174,7 @@
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.sprinqua.com/install.html"/>
-    <xhtml:link rel="alternate" hreflang="en"        href="https://www.sprinqua.com/install.html?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="en"        href="https://www.sprinqua.com/install.html"/>
     <xhtml:link rel="alternate" hreflang="pt"        href="https://www.sprinqua.com/install.html?lang=pt"/>
     <xhtml:link rel="alternate" hreflang="es"        href="https://www.sprinqua.com/install.html?lang=es"/>
     <xhtml:link rel="alternate" hreflang="fr"        href="https://www.sprinqua.com/install.html?lang=fr"/>
@@ -204,7 +189,7 @@
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.sprinqua.com/install.html"/>
-    <xhtml:link rel="alternate" hreflang="en"        href="https://www.sprinqua.com/install.html?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="en"        href="https://www.sprinqua.com/install.html"/>
     <xhtml:link rel="alternate" hreflang="pt"        href="https://www.sprinqua.com/install.html?lang=pt"/>
     <xhtml:link rel="alternate" hreflang="es"        href="https://www.sprinqua.com/install.html?lang=es"/>
     <xhtml:link rel="alternate" hreflang="fr"        href="https://www.sprinqua.com/install.html?lang=fr"/>

@@ -7,10 +7,10 @@
   <link rel="apple-touch-icon" sizes="180x180" href="site_img/apple-touch-icon.png">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Install Sprinqua — Getting Started</title>
-  <meta name="description" content="How to install Sprinqua on your Raspberry Pi running Orbit OS. Step-by-step guide: install the .orb package, open the web UI, and configure your relay board.">
-  <link rel="canonical" href="https://www.sprinqua.com/install.html">
+  <meta id="meta-desc" name="description" content="How to install Sprinqua on your Raspberry Pi running Orbit OS. Step-by-step guide: install the .orb package, open the web UI, and configure your relay board.">
+  <link id="canonical-link" rel="canonical" href="https://www.sprinqua.com/install.html">
   <!-- hreflang alternates -->
-  <link rel="alternate" hreflang="en"        href="https://www.sprinqua.com/install.html?lang=en">
+  <link rel="alternate" hreflang="en"        href="https://www.sprinqua.com/install.html">
   <link rel="alternate" hreflang="pt"        href="https://www.sprinqua.com/install.html?lang=pt">
   <link rel="alternate" hreflang="es"        href="https://www.sprinqua.com/install.html?lang=es">
   <link rel="alternate" hreflang="fr"        href="https://www.sprinqua.com/install.html?lang=fr">
@@ -49,16 +49,16 @@
   <!-- Nav -->
   <nav class="fixed top-0 w-full z-50 bg-white/80 backdrop-blur border-b border-slate-200">
     <div class="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-      <a href="index.html" class="flex items-center gap-2">
+      <a href="/" class="flex items-center gap-2">
         <span class="text-xl">💧</span>
         <span class="font-bold text-slate-900 text-base">Sprinqua</span>
       </a>
       <div class="flex items-center gap-6">
-        <a href="index.html#features" data-i18n="nav_features" class="text-sm text-slate-500 hover:text-slate-900 transition-colors hidden sm:block">Features</a>
-        <a href="index.html#boards" data-i18n="nav_boards" class="text-sm text-slate-500 hover:text-slate-900 transition-colors hidden sm:block">Boards</a>
-        <a href="index.html#ha" data-i18n="nav_ha" class="text-sm text-slate-500 hover:text-slate-900 transition-colors hidden sm:block">Home&nbsp;Assistant</a>
+        <a href="/#features" data-i18n="nav_features" class="text-sm text-slate-500 hover:text-slate-900 transition-colors hidden sm:block">Features</a>
+        <a href="/#boards" data-i18n="nav_boards" class="text-sm text-slate-500 hover:text-slate-900 transition-colors hidden sm:block">Boards</a>
+        <a href="/#ha" data-i18n="nav_ha" class="text-sm text-slate-500 hover:text-slate-900 transition-colors hidden sm:block">Home&nbsp;Assistant</a>
         <a href="install.html" data-i18n="nav_install" class="text-sm font-semibold text-emerald-600 hidden sm:block">Install</a>
-        <a href="index.html#contact" data-i18n="nav_contact" class="text-sm text-slate-500 hover:text-slate-900 transition-colors hidden sm:block">Contact</a>
+        <a href="/#contact" data-i18n="nav_contact" class="text-sm text-slate-500 hover:text-slate-900 transition-colors hidden sm:block">Contact</a>
         <div class="hidden sm:flex items-center gap-2">
           <a href="https://orbit-os.org" class="hidden sm:inline-flex items-center bg-slate-900 px-2 h-8 rounded-full hover:bg-slate-700 transition-colors">
             <img src="site_img/orbitos.png" alt="Orbit OS" class="h-5 object-contain">
@@ -84,11 +84,11 @@
     </div>
     <div id="mobile-menu" class="hidden sm:hidden bg-white border-b border-slate-200">
       <div class="max-w-5xl mx-auto px-6 py-4 flex flex-col gap-1">
-        <a href="index.html#features" data-i18n="nav_features" onclick="closeMenu()" class="text-sm text-slate-700 hover:text-slate-900 py-2 border-b border-slate-100">Features</a>
-        <a href="index.html#boards" data-i18n="nav_boards" onclick="closeMenu()" class="text-sm text-slate-700 hover:text-slate-900 py-2 border-b border-slate-100">Boards</a>
-        <a href="index.html#ha" data-i18n="nav_ha" onclick="closeMenu()" class="text-sm text-slate-700 hover:text-slate-900 py-2 border-b border-slate-100">Home&#160;Assistant</a>
+        <a href="/#features" data-i18n="nav_features" onclick="closeMenu()" class="text-sm text-slate-700 hover:text-slate-900 py-2 border-b border-slate-100">Features</a>
+        <a href="/#boards" data-i18n="nav_boards" onclick="closeMenu()" class="text-sm text-slate-700 hover:text-slate-900 py-2 border-b border-slate-100">Boards</a>
+        <a href="/#ha" data-i18n="nav_ha" onclick="closeMenu()" class="text-sm text-slate-700 hover:text-slate-900 py-2 border-b border-slate-100">Home&#160;Assistant</a>
         <a href="install.html" onclick="closeMenu()" data-i18n="nav_install" class="text-sm text-slate-700 hover:text-slate-900 py-2 border-b border-slate-100">Install</a>
-        <a href="index.html#contact" data-i18n="nav_contact" onclick="closeMenu()" class="text-sm text-slate-700 hover:text-slate-900 py-2 border-b border-slate-100">Contact</a>
+        <a href="/#contact" data-i18n="nav_contact" onclick="closeMenu()" class="text-sm text-slate-700 hover:text-slate-900 py-2 border-b border-slate-100">Contact</a>
         <div class="flex items-center gap-3 pt-3">
           <a href="https://orbit-os.org" class="inline-flex items-center bg-slate-900 px-2 h-8 rounded-full hover:bg-slate-700 transition-colors">
             <img src="site_img/orbitos.png" alt="Orbit OS" class="h-5 object-contain">
@@ -143,7 +143,7 @@
           <div class="text-2xl mb-3">🔌</div>
           <h3 class="font-semibold text-slate-900 mb-1 text-sm" data-i18n="req_relay_h3">Relay Board</h3>
           <p class="text-xs text-slate-500 leading-relaxed" data-i18n="req_relay_p">A GPIO-controlled relay HAT. Sprinqua supports 8+ boards out of the box — from 3 to 8 channels.</p>
-          <a href="index.html#boards" class="inline-block mt-3 text-xs font-semibold text-emerald-600 hover:text-emerald-700" data-i18n="req_relay_link">See supported boards →</a>
+          <a href="/#boards" class="inline-block mt-3 text-xs font-semibold text-emerald-600 hover:text-emerald-700" data-i18n="req_relay_link">See supported boards →</a>
         </div>
 
         <div class="bg-white rounded-2xl border border-slate-200 p-5">
@@ -319,7 +319,7 @@
         <p><span class="text-emerald-400">sprinqua/mode/state</span>  → Standalone | HA-Managed</p>
       </div>
       <div class="flex flex-wrap gap-3">
-        <a href="index.html#ha" class="text-sm font-semibold text-emerald-600 hover:text-emerald-700 transition-colors" data-i18n="ha_link">
+        <a href="/#ha" class="text-sm font-semibold text-emerald-600 hover:text-emerald-700 transition-colors" data-i18n="ha_link">
           See full MQTT documentation →
         </a>
       </div>
@@ -386,7 +386,7 @@
         <a href="https://github.com/OrbitOS-org/app-sprinqua/issues" class="flex items-center justify-center gap-2 bg-white text-slate-900 font-semibold px-6 py-3 rounded-xl hover:bg-slate-100 transition-colors" data-i18n="cta_btn1">
           Open an Issue on GitHub
         </a>
-        <a href="index.html" class="flex items-center justify-center gap-2 bg-white/10 border border-white/20 text-white font-semibold px-6 py-3 rounded-xl hover:bg-white/20 transition-colors" data-i18n="cta_btn2">
+        <a href="/" class="flex items-center justify-center gap-2 bg-white/10 border border-white/20 text-white font-semibold px-6 py-3 rounded-xl hover:bg-white/20 transition-colors" data-i18n="cta_btn2">
           ← Back to Overview
         </a>
       </div>
@@ -486,7 +486,11 @@
       footer_built_for: 'Built for',
       footer_github: 'GitHub',
       nav_install: 'Install',
-      nav_contact: 'Contact'
+      nav_contact: 'Contact',
+      html_lang: 'en',
+      meta_title: 'Install Sprinqua — Getting Started',
+      meta_desc: 'How to install Sprinqua on your Raspberry Pi running Orbit OS. Step-by-step guide: install the .orb package, open the web UI, and configure your relay board.',
+      canonical: 'https://www.sprinqua.com/install.html'
     },
     pt: {
       nav_features: 'Funcionalidades',
@@ -559,7 +563,11 @@
       footer_built_for: 'Criado para',
       footer_github: 'GitHub',
       nav_install: 'Instalar',
-      nav_contact: 'Contacto'
+      nav_contact: 'Contacto',
+      html_lang: 'pt',
+      meta_title: 'Instalar Sprinqua — Primeiros Passos',
+      meta_desc: 'Como instalar o Sprinqua no teu Raspberry Pi com Orbit OS. Guia passo a passo: instala o pacote .orb, abre a interface web e configura a tua placa de relés.',
+      canonical: 'https://www.sprinqua.com/install.html?lang=pt'
     },
     es: {
       nav_features: 'Funciones',
@@ -632,7 +640,11 @@
       footer_built_for: 'Hecho para',
       footer_github: 'GitHub',
       nav_install: 'Instalar',
-      nav_contact: 'Contacto'
+      nav_contact: 'Contacto',
+      html_lang: 'es',
+      meta_title: 'Instalar Sprinqua — Guía de inicio',
+      meta_desc: 'Cómo instalar Sprinqua en tu Raspberry Pi con Orbit OS. Guía paso a paso: instala el paquete .orb, abre la interfaz web y configura tu placa de relés.',
+      canonical: 'https://www.sprinqua.com/install.html?lang=es'
     },
     fr: {
       nav_features: 'Fonctionnalités',
@@ -705,7 +717,11 @@
       footer_built_for: 'Conçu pour',
       footer_github: 'GitHub',
       nav_install: 'Installer',
-      nav_contact: 'Contact'
+      nav_contact: 'Contact',
+      html_lang: 'fr',
+      meta_title: 'Installer Sprinqua — Premiers pas',
+      meta_desc: 'Comment installer Sprinqua sur votre Raspberry Pi avec Orbit OS. Guide étape par étape : installez le paquet .orb, ouvrez l\'interface web et configurez votre carte relais.',
+      canonical: 'https://www.sprinqua.com/install.html?lang=fr'
     },
     de: {
       nav_features: 'Funktionen',
@@ -778,7 +794,11 @@
       footer_built_for: 'Entwickelt für',
       footer_github: 'GitHub',
       nav_install: 'Installieren',
-      nav_contact: 'Kontakt'
+      nav_contact: 'Kontakt',
+      html_lang: 'de',
+      meta_title: 'Sprinqua installieren — Erste Schritte',
+      meta_desc: 'So installieren Sie Sprinqua auf Ihrem Raspberry Pi mit Orbit OS. Schritt-für-Schritt-Anleitung: .orb-Paket installieren, Web-UI öffnen und Relaisboard konfigurieren.',
+      canonical: 'https://www.sprinqua.com/install.html?lang=de'
     },
     it: {
       nav_features: 'Funzionalità',
@@ -851,7 +871,11 @@
       footer_built_for: 'Progettato per',
       footer_github: 'GitHub',
       nav_install: 'Installa',
-      nav_contact: 'Contatto'
+      nav_contact: 'Contatto',
+      html_lang: 'it',
+      meta_title: 'Installare Sprinqua — Guida introduttiva',
+      meta_desc: 'Come installare Sprinqua sul tuo Raspberry Pi con Orbit OS. Guida passo dopo passo: installa il pacchetto .orb, apri l\'interfaccia web e configura la scheda relè.',
+      canonical: 'https://www.sprinqua.com/install.html?lang=it'
     }
   };;
 </script>
@@ -894,6 +918,12 @@
         var key = el.getAttribute('data-i18ni');
         if (t[key] !== undefined) el.innerHTML = t[key];
       });
+      if (t.html_lang) document.documentElement.lang = t.html_lang;
+      if (t.meta_title) document.title = t.meta_title;
+      var metaDesc = document.getElementById('meta-desc');
+      if (metaDesc && t.meta_desc) metaDesc.setAttribute('content', t.meta_desc);
+      var canonical = document.getElementById('canonical-link');
+      if (canonical && t.canonical) canonical.setAttribute('href', t.canonical);
     }
     // restore persisted lang on load
     (function(){
