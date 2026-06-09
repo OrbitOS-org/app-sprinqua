@@ -118,7 +118,7 @@
         </div>
 
         <!-- Enabled toggle -->
-        <div class="flex items-center gap-3 mb-6">
+        <div class="flex items-center gap-3 mb-4">
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" name="enabled" value="1" class="sr-only peer"
               {{if .Schedule.Enabled}}checked{{end}}>
@@ -128,6 +128,26 @@
               after:transition-all peer-checked:after:translate-x-5"></div>
           </label>
           <span class="text-sm text-slate-700">{{.S.sched_form_enabled}}</span>
+        </div>
+
+        <!-- Smart Watering adjustment -->
+        <div class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 bg-slate-50 mb-6">
+          <div class="pr-4">
+            <p class="text-sm font-medium text-slate-700">🌦 {{.S.sched_form_smart_watering}}</p>
+            <p class="text-xs mt-0.5 {{if .SmartWateringEnabled}}text-slate-400{{else}}text-amber-500{{end}}">
+              {{if .SmartWateringEnabled}}{{.S.sched_form_smart_watering_desc}}{{else}}{{.S.sched_form_smart_watering_disabled}}{{end}}
+            </p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+            <input type="checkbox" name="smart_watering" value="1" class="sr-only peer"
+              {{if .Schedule.SmartWatering}}checked{{end}}
+              {{if not .SmartWateringEnabled}}disabled{{end}}>
+            <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-emerald-600
+              after:content-[''] after:absolute after:top-0.5 after:left-0.5
+              after:bg-white after:rounded-full after:h-5 after:w-5
+              after:transition-all peer-checked:after:translate-x-5
+              {{if not .SmartWateringEnabled}}opacity-40 cursor-not-allowed{{end}}"></div>
+          </label>
         </div>
 
         <div class="flex gap-3">

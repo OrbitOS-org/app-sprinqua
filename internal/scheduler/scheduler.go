@@ -2,10 +2,12 @@ package scheduler
 
 import (
 	"fmt"
+	"math"
 	"sync"
 	"time"
 
 	"github.com/OrbitOS-org/sdk-go/v26/logger"
+	"sprinqua/internal/adjustment"
 	"sprinqua/internal/config"
 	"sprinqua/internal/history"
 	"sprinqua/internal/weather"
@@ -127,7 +129,29 @@ func runSchedule(eng *zone.Engine, sched config.Schedule, hist *history.Store, s
 		}
 	}
 
-	logger.Infof(logTag, "schedule %d zone %d ON for %dmin", sched.ID, sched.ZoneID, sched.DurMins)
+	dur := sched.DurMins
+	if sched.SmartWatering && sw.Enabled && sw.Method != "" {
+		var dailyData *weather.DailyData
+		if sw.Method == "zimmerman" || sw.Method == "eto" {
+			if d, err := weather.FetchYesterday(sw.Lat, sw.Lon); err != nil {
+				logger.Warnf(logTag, "schedule %d: yesterday weather fetch failed: %v", sched.ID, err)
+			} else {
+				dailyData = d
+			}
+		}
+		mult := adjustment.Calc(sw, dailyData)
+		dur = int(math.Round(float64(dur) * mult))
+		logger.Infof(logTag, "schedule %d: adjustment method=%s mult=%.2f → %dmin", sched.ID, sw.Method, mult, dur)
+		if dur <= 0 {
+			logger.Infof(logTag, "schedule %d: adjusted duration=0, skipping", sched.ID)
+			if hist != nil {
+				hist.Skip(sched.ZoneID, history.Schedule)
+			}
+			return
+		}
+	}
+
+	logger.Infof(logTag, "schedule %d zone %d ON for %dmin", sched.ID, sched.ZoneID, dur)
 	if err := eng.TurnOn(sched.ZoneID); err != nil {
 		logger.Warnf(logTag, "schedule %d zone %d ON: %v", sched.ID, sched.ZoneID, err)
 		return
@@ -135,7 +159,7 @@ func runSchedule(eng *zone.Engine, sched config.Schedule, hist *history.Store, s
 	if hist != nil {
 		hist.Start(sched.ZoneID, history.Schedule)
 	}
-	time.Sleep(time.Duration(sched.DurMins) * time.Minute)
+	time.Sleep(time.Duration(dur) * time.Minute)
 	if err := eng.TurnOff(sched.ZoneID); err != nil {
 		logger.Warnf(logTag, "schedule %d zone %d OFF: %v", sched.ID, sched.ZoneID, err)
 	}

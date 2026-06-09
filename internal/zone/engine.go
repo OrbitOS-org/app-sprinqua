@@ -100,11 +100,10 @@ func (e *Engine) Init() {
 			logger.Warnf(logTag, "zone %d: no pin for channel %d", en.cfg.ID, en.cfg.Channel)
 			continue
 		}
-		// Pre-set OFF before enabling output so the driver uses it as initial level.
-		_ = e.relayWrite(pin, false)
-		if err := e.gpio.SetDirection(pin, client.GPIO_DIR_OUT); err != nil {
-			logger.Warnf(logTag, "zone %d SetDirection: %v", en.cfg.ID, err)
-		}
+		// relayWrite → SetLevel → SetValue in the runtime opens the GPIO line via
+		// gpiocdev.RequestLine(chip, offset, AsOutput(val)) with the correct initial
+		// level in one atomic call. Calling SetDirection first always initialises to
+		// LOW (AsOutput(0)), which would briefly activate relays on ActiveLow boards.
 		if err := e.relayWrite(pin, false); err != nil {
 			logger.Warnf(logTag, "zone %d init OFF: %v", en.cfg.ID, err)
 		}

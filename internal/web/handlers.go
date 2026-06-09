@@ -85,15 +85,16 @@ type langOption struct {
 
 type settingsData struct {
 	basePage
-	MQTT           config.MQTTConfig
-	TimeFormat     string
-	ExclusiveMode  bool
-	WinterMode     bool
-	SmartWatering  config.SmartWateringConfig
-	SetupDone      bool
-	BoardName      string
-	ZoneCount      int
-	SupportedLangs []langOption
+	MQTT            config.MQTTConfig
+	TimeFormat      string
+	ExclusiveMode   bool
+	WinterMode      bool
+	SmartWatering   config.SmartWateringConfig
+	EToCalculating  bool
+	SetupDone       bool
+	BoardName       string
+	ZoneCount       int
+	SupportedLangs  []langOption
 }
 
 var langLabels = map[string]string{
@@ -123,17 +124,22 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	if sw.RainThresholdMM <= 0 {
 		sw.RainThresholdMM = 2.0
 	}
+	s.etoMu.Lock()
+	etoCalc := s.etoCalculating
+	s.etoMu.Unlock()
+
 	s.render(w, "settings", settingsData{
-		basePage:       s.page(r),
-		MQTT:           s.cfg.MQTT,
-		TimeFormat:     tf,
-		ExclusiveMode:  s.cfg.IsExclusiveMode(),
-		WinterMode:     s.cfg.WinterMode,
-		SmartWatering:  sw,
-		SetupDone:      s.cfg.SetupDone,
-		BoardName:      boardName,
-		ZoneCount:      len(s.cfg.Zones),
-		SupportedLangs: langs,
+		basePage:        s.page(r),
+		MQTT:            s.cfg.MQTT,
+		TimeFormat:      tf,
+		ExclusiveMode:   s.cfg.IsExclusiveMode(),
+		WinterMode:      s.cfg.WinterMode,
+		SmartWatering:   sw,
+		EToCalculating:  etoCalc,
+		SetupDone:       s.cfg.SetupDone,
+		BoardName:       boardName,
+		ZoneCount:       len(s.cfg.Zones),
+		SupportedLangs:  langs,
 	})
 }
 
@@ -196,17 +202,66 @@ func (s *Server) handleSettingsSave(w http.ResponseWriter, r *http.Request) {
 	if swThresh <= 0 {
 		swThresh = 2.0
 	}
+	swMethod := r.FormValue("sw_method")
+	switch swMethod {
+	case "manual", "monthly", "zimmerman", "eto":
+	default:
+		swMethod = ""
+	}
+	swManualPct, _ := strconv.ParseFloat(r.FormValue("sw_manual_pct"), 64)
+	if swManualPct <= 0 {
+		swManualPct = 100
+	}
+	var swMonthly [12]float64
+	for i := 0; i < 12; i++ {
+		v, err := strconv.ParseFloat(r.FormValue(fmt.Sprintf("sw_monthly_%d", i)), 64)
+		if err != nil || v < 0 {
+			v = 100
+		}
+		swMonthly[i] = v
+	}
+
+	// Zimmerman parameters
+	zimmBT, _ := strconv.ParseFloat(r.FormValue("zimm_bt"), 64)
+	zimmBH, _ := strconv.ParseFloat(r.FormValue("zimm_bh"), 64)
+	zimmBP, _ := strconv.ParseFloat(r.FormValue("zimm_bp"), 64)
+	zimmWT, _ := strconv.ParseFloat(r.FormValue("zimm_wt"), 64)
+	zimmWH, _ := strconv.ParseFloat(r.FormValue("zimm_wh"), 64)
+	zimmWP, _ := strconv.ParseFloat(r.FormValue("zimm_wp"), 64)
+	altitude, _ := strconv.ParseFloat(r.FormValue("sw_altitude"), 64)
+
+	// Preserve calculated ETo baseline across settings saves
+	prevBaseline := s.cfg.SmartWatering.EToBaseline
+	prevBaselineAt := s.cfg.SmartWatering.EToBaselineCalculatedAt
+
 	s.cfg.SmartWatering = config.SmartWateringConfig{
-		Enabled:         swEnabled,
-		Lat:             swLat,
-		Lon:             swLon,
-		RainThresholdMM: swThresh,
+		Enabled:                 swEnabled,
+		Lat:                     swLat,
+		Lon:                     swLon,
+		RainThresholdMM:         swThresh,
+		Method:                  swMethod,
+		ManualPct:               swManualPct,
+		MonthlyPct:              swMonthly,
+		ZimmBT:                  zimmBT,
+		ZimmBH:                  zimmBH,
+		ZimmBP:                  zimmBP,
+		ZimmWT:                  zimmWT,
+		ZimmWH:                  zimmWH,
+		ZimmWP:                  zimmWP,
+		Altitude:                altitude,
+		EToBaseline:             prevBaseline,
+		EToBaselineCalculatedAt: prevBaselineAt,
 	}
 
 	if err := s.cfg.Save(s.dataDir); err != nil {
 		logger.Errorf(logTag, "save settings: %v", err)
 		http.Error(w, "save failed", http.StatusInternalServerError)
 		return
+	}
+
+	// Auto-trigger ETo baseline calculation on first selection of "eto" method
+	if swMethod == "eto" && prevBaseline == 0 && swLat != 0 {
+		go s.triggerEToBaseline()
 	}
 
 	// Reconnect MQTT with updated config.
@@ -576,10 +631,11 @@ type scheduleView struct {
 
 type scheduleFormData struct {
 	basePage
-	Schedule  config.Schedule
-	Zones     []config.Zone
-	IsNew     bool
-	DaysError bool
+	Schedule             config.Schedule
+	Zones                []config.Zone
+	IsNew                bool
+	DaysError            bool
+	SmartWateringEnabled bool
 }
 
 func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
@@ -789,11 +845,12 @@ func (s *Server) handleSchedule(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleScheduleNew(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "schedule_form", scheduleFormData{
-		basePage:  s.page(r),
-		Schedule:  config.Schedule{Enabled: true, StartTime: "08:00"},
-		Zones:     s.cfg.Zones,
-		IsNew:     true,
-		DaysError: r.URL.Query().Get("err") == "days",
+		basePage:             s.page(r),
+		Schedule:             config.Schedule{Enabled: true, StartTime: "08:00"},
+		Zones:                s.cfg.Zones,
+		IsNew:                true,
+		DaysError:            r.URL.Query().Get("err") == "days",
+		SmartWateringEnabled: s.cfg.SmartWatering.Enabled,
 	})
 }
 
@@ -806,11 +863,12 @@ func (s *Server) handleScheduleEdit(w http.ResponseWriter, r *http.Request) {
 	for _, sc := range s.cfg.Schedules {
 		if sc.ID == id {
 			s.render(w, "schedule_form", scheduleFormData{
-				basePage:  s.page(r),
-				Schedule:  sc,
-				Zones:     s.cfg.Zones,
-				IsNew:     false,
-				DaysError: r.URL.Query().Get("err") == "days",
+				basePage:             s.page(r),
+				Schedule:             sc,
+				Zones:                s.cfg.Zones,
+				IsNew:                false,
+				DaysError:            r.URL.Query().Get("err") == "days",
+				SmartWateringEnabled: s.cfg.SmartWatering.Enabled,
 			})
 			return
 		}
@@ -1136,12 +1194,13 @@ func (s *Server) parseScheduleForm(r *http.Request) config.Schedule {
 		durMins = 10
 	}
 	return config.Schedule{
-		Name:      r.FormValue("name"),
-		ZoneID:    zoneID,
-		Days:      days,
-		StartTime: startTime,
-		DurMins:   durMins,
-		Enabled:   r.FormValue("enabled") == "1",
+		Name:          r.FormValue("name"),
+		ZoneID:        zoneID,
+		Days:          days,
+		StartTime:     startTime,
+		DurMins:       durMins,
+		Enabled:       r.FormValue("enabled") == "1",
+		SmartWatering: r.FormValue("smart_watering") == "1",
 	}
 }
 

@@ -17,6 +17,7 @@ import (
 	"sprinqua/internal/i18n"
 	"sprinqua/internal/mqtt"
 	"sprinqua/internal/scheduler"
+	"sprinqua/internal/weather"
 	"sprinqua/internal/zone"
 )
 
@@ -58,19 +59,21 @@ type basePage struct {
 
 // Server holds all dependencies for the HTTP layer.
 type Server struct {
-	dataDir     string
-	cfg         *config.Config
-	board       *board.Board
-	engine      *zone.Engine
-	sched       *scheduler.Scheduler
-	hist        *history.Store
-	gpio        *client.GpioManager
-	system      *client.SystemManager
-	appHub      *client.AppHubManager
-	mqttClient  *mqtt.Client
-	tmpl        *template.Template
-	testMu      sync.Mutex
-	testCancels map[int]context.CancelFunc
+	dataDir        string
+	cfg            *config.Config
+	board          *board.Board
+	engine         *zone.Engine
+	sched          *scheduler.Scheduler
+	hist           *history.Store
+	gpio           *client.GpioManager
+	system         *client.SystemManager
+	appHub         *client.AppHubManager
+	mqttClient     *mqtt.Client
+	tmpl           *template.Template
+	testMu         sync.Mutex
+	testCancels    map[int]context.CancelFunc
+	etoMu          sync.Mutex
+	etoCalculating bool
 }
 
 func New(
@@ -167,6 +170,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 
 	// Smart Watering
 	mux.HandleFunc("GET /api/weather", s.handleWeatherStatus)
+	mux.HandleFunc("POST /api/eto-baseline/recalculate", s.handleEToBaselineRecalculate)
 
 	// History
 	mux.HandleFunc("GET /history", s.handleHistory)
@@ -228,4 +232,52 @@ func (s *Server) render(w http.ResponseWriter, name string, data any) {
 		logger.Errorf(logTag, "render %s: %v", name, err)
 		http.Error(w, "render error", http.StatusInternalServerError)
 	}
+}
+
+// triggerEToBaseline fetches the ETo baseline in a background goroutine and
+// persists the result to config. Safe to call multiple times — ignores if already running.
+func (s *Server) triggerEToBaseline() {
+	s.etoMu.Lock()
+	if s.etoCalculating {
+		s.etoMu.Unlock()
+		return
+	}
+	s.etoCalculating = true
+	s.etoMu.Unlock()
+
+	go func() {
+		defer func() {
+			s.etoMu.Lock()
+			s.etoCalculating = false
+			s.etoMu.Unlock()
+		}()
+
+		sw := s.cfg.SmartWatering
+		baseline, err := weather.FetchEToBaseline(sw.Lat, sw.Lon)
+		if err != nil {
+			logger.Warnf(logTag, "ETo baseline fetch failed: %v", err)
+			return
+		}
+
+		s.cfg.SmartWatering.EToBaseline = baseline
+		s.cfg.SmartWatering.EToBaselineCalculatedAt = time.Now().Format("2006-01-02")
+		if err := s.cfg.Save(s.dataDir); err != nil {
+			logger.Errorf(logTag, "save config after ETo baseline: %v", err)
+			return
+		}
+		logger.Infof(logTag, "ETo baseline calculated: %.3f mm/day", baseline)
+	}()
+}
+
+// handleEToBaselineRecalculate resets the stored baseline and triggers a fresh calculation.
+func (s *Server) handleEToBaselineRecalculate(w http.ResponseWriter, r *http.Request) {
+	s.cfg.SmartWatering.EToBaseline = 0
+	s.cfg.SmartWatering.EToBaselineCalculatedAt = ""
+	if err := s.cfg.Save(s.dataDir); err != nil {
+		logger.Errorf(logTag, "save config on ETo reset: %v", err)
+		http.Error(w, "save error", http.StatusInternalServerError)
+		return
+	}
+	go s.triggerEToBaseline()
+	http.Redirect(w, r, "/setup", http.StatusSeeOther)
 }

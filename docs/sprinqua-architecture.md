@@ -242,22 +242,82 @@ Ficheiro: `internal/history/history.go`
 
 ## 10. Smart Watering
 
-Ficheiro: `internal/weather/weather.go`
+### 10.1 Módulo meteorológico — `internal/weather/weather.go`
 
-- API: **Open-Meteo** (gratuito, sem API key) — `precipitation_sum` diária
-- Cache em memória: 1 hora por coordenada
-- `FetchToday(lat, lon) (*Result, error)` — retorna `RainMM float64`
+- API: **Open-Meteo** (gratuito, sem API key)
+- `FetchToday(lat, lon) (*Result, error)` — fetcha `precipitation_sum` diária (previsão hoje), cache 1h
 
-**Config** (`SmartWateringConfig` em `config.go`):
-- `Enabled bool`
-- `Lat`, `Lon float64`
-- `RainThresholdMM float64` (default: 2mm se 0)
-- `EffectiveThreshold()` — retorna 2.0 se não configurado
+### 10.2 Módulo de ajuste — `internal/adjustment/adjustment.go`
 
-**Settings UI**
-- Toggle + mapa Leaflet/OSM (clicar no mapa define lat/lon)
-- Campos lat/lon + threshold editáveis manualmente
-- Card de status HTMX (`GET /api/weather`): ☀️ verde (permitido) ou 🌧️ âmbar (saltado), com mm previstos e limiar; botão ↻ de refresh
+- `Calc(sw SmartWateringConfig) float64` — devolve multiplicador [0.0–2.5]
+- `"manual"` → `ManualPct / 100.0`
+- `"monthly"` → `MonthlyPct[mesAtual] / 100.0` (default 100 se slot a zero)
+
+### 10.3 Config — `SmartWateringConfig`
+
+```go
+Enabled         bool
+Lat, Lon        float64
+RainThresholdMM float64     // skip se chuva >= threshold; default 2mm
+Method          string      // "" | "manual" | "monthly" | "zimmerman" | "eto"
+ManualPct       float64     // 0–250
+MonthlyPct      [12]float64 // Jan=0 … Dez=11; 0 = default 100
+```
+
+### 10.4 Integração no scheduler
+
+- Por programa: `Schedule.SmartWatering bool` — opt-in por programa
+- `runSchedule` aplica `adjustment.Calc(sw)` à duração quando `sched.SmartWatering && sw.Method != ""`
+- Duração ajustada = 0 → `hist.Skip()` e abort (mesmo comportamento do skip por chuva)
+- O skip por chuva (limiar) é independente e corre sempre antes do ajuste de duração
+
+### 10.5 Settings UI
+
+- Toggle global + mapa Leaflet/OSM
+- Seletor de método: Skip only / Manual / Monthly *(Zimmerman e ETo em fases futuras)*
+- Manual: campo de percentagem única
+- Monthly: grelha 4×3 com os 12 meses
+- Card de status HTMX (`GET /api/weather`)
+
+---
+
+## 10.6 Fase 2 — Zimmerman (planeada)
+
+Heurística empírica: `Watering% = 100 + (T - BT)×4×WT + (30 - BH)×WH - 200×(P - BP)×WP`
+
+Requer fetch de `temperature_2m_max/min`, `relative_humidity_2m_mean`, `precipitation_sum` do **dia anterior** (`past_days=1`). Parâmetros configuráveis: `BT` (°F), `BH` (%), `BP`, pesos `WT/WH/WP` (0–100%).
+
+---
+
+## 10.7 Fase 3 — ETo / Penman-Monteith (planeada)
+
+`Watering% = ((ETo_ontem - Precip_ontem) ÷ ETo_baseline) × 100%`
+
+O Open-Meteo já devolve `et0_fao_evapotranspiration` — não é necessário implementar FAO-56.
+
+**ETo baseline** — média diária anual calculada a partir dos últimos 12 meses via Archive API.
+
+**Decisões de implementação:**
+
+| Decisão | Escolha |
+|---|---|
+| Quando calcular baseline | Automaticamente na 1ª vez que o utilizador seleciona ETo como método — goroutine em background |
+| Fallback enquanto sem baseline | Zimmerman temporariamente, com banner de aviso na UI: *"ETo baseline ainda não calculado. A usar Zimmerman temporariamente."* Quando o baseline ficar pronto, o sistema muda para ETo sem intervenção |
+| Onde guardar | Dentro de `smart_watering` em `config.json` |
+| Recálculo manual | Botão "Recalcular baseline" nas definições ETo — útil após mudança de localização |
+
+**Campos novos em `SmartWateringConfig`:**
+```json
+"eto_baseline": 0.112,
+"eto_baseline_calculated_at": "2026-01-15"
+```
+`eto_baseline_calculated_at` permite mostrar no botão "Recalcular" quando foi o último cálculo.
+
+**Campos adicionais necessários no Open-Meteo (dia anterior):**
+`et0_fao_evapotranspiration`, `precipitation_sum`
+
+**Campos adicionais necessários na config:**
+- `Altitude float64` — necessário para a Archive API (parâmetro `elevation`)
 
 ---
 
@@ -358,10 +418,10 @@ Ficheiro: `config.json` no working directory da app
 
 ## O que falta implementar
 
-| Módulo | Valor | Complexidade |
-|---|---|---|
-| Pulse duration configurável na UI (backend já suporta `?secs=`) | Médio | Baixa |
-| Filtros no histórico (por zona, por trigger) | Médio | Baixa |
-| Estatísticas — total regado por zona/semana | Médio | Média |
-| Smart Watering — ajuste proporcional de duração (em vez de skip total) | Médio | Média |
-| Smart Watering — ET / temperatura / vento (dados adicionais Open-Meteo) | Baixo | Média |
+| Módulo | Fase | Valor | Complexidade |
+|---|---|---|---|
+| Pulse duration configurável na UI (backend já suporta `?secs=`) | — | Médio | Baixa |
+| Filtros no histórico (por zona, por trigger) | — | Médio | Baixa |
+| Estatísticas — total regado por zona/semana | — | Médio | Média |
+| Smart Watering — Zimmerman (temp + humidade + precip do dia anterior) | Fase 2 | Alto | Média |
+| Smart Watering — ETo com baseline automático via Archive API | Fase 3 | Alto | Média |
