@@ -66,6 +66,11 @@
   "smart_watering_lat": "Latitude",
   "smart_watering_lon": "Longitude",
   "smart_watering_threshold": "Skip if rain ≥ (mm)",
+  "winter_mode_label": "Winter Mode",
+  "winter_mode_desc": "Pause all scheduled irrigation. Manual watering still works.",
+  "winter_mode_banner_title": "Winter Mode Active",
+  "winter_mode_banner_desc": "Schedules are paused. Manual control is still available.",
+
   "settings_exclusive_label": "Exclusive zone mode",
   "settings_exclusive_desc": "Only one zone active at a time. Activating a new zone turns off the current one.",
 

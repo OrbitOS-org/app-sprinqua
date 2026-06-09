@@ -122,7 +122,7 @@ var All = []*Board{
 		Description: "8-channel relay HAT for Raspberry Pi via direct GPIO.",
 		SKU:         "15423",
 		Channels:    8,
-		ActiveLow:   false,
+		ActiveLow:   true,
 		Pins: []Channel{
 			{Number: 1, Pin: &client.GpioPin{Name: "GPIO5"}},
 			{Number: 2, Pin: &client.GpioPin{Name: "GPIO6"}},

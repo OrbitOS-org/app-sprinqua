@@ -88,6 +88,7 @@ type settingsData struct {
 	MQTT           config.MQTTConfig
 	TimeFormat     string
 	ExclusiveMode  bool
+	WinterMode     bool
 	SmartWatering  config.SmartWateringConfig
 	SetupDone      bool
 	BoardName      string
@@ -127,6 +128,7 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		MQTT:           s.cfg.MQTT,
 		TimeFormat:     tf,
 		ExclusiveMode:  s.cfg.IsExclusiveMode(),
+		WinterMode:     s.cfg.WinterMode,
 		SmartWatering:  sw,
 		SetupDone:      s.cfg.SetupDone,
 		BoardName:      boardName,
@@ -184,7 +186,8 @@ func (s *Server) handleSettingsSave(w http.ResponseWriter, r *http.Request) {
 		s.cfg.MQTT.Enabled = false
 		s.cfg.MQTT.Mode = "active"
 	}
-	s.sched.SetPaused(s.cfg.MQTT.IsPassive())
+	s.cfg.WinterMode = r.FormValue("winter_mode") == "1"
+	s.sched.SetPaused(s.cfg.MQTT.IsPassive() || s.cfg.WinterMode)
 
 	swEnabled := r.FormValue("sw_enabled") == "1"
 	swLat, _ := strconv.ParseFloat(r.FormValue("sw_lat"), 64)
@@ -415,8 +418,9 @@ func (s *Server) handleSetupStep3(w http.ResponseWriter, r *http.Request) {
 
 type dashboardData struct {
 	basePage
-	HWModel string
-	Zones   []zone.State
+	HWModel    string
+	Zones      []zone.State
+	WinterMode bool
 }
 
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
@@ -426,9 +430,10 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		states = s.engine.States()
 	}
 	s.render(w, "dashboard", dashboardData{
-		basePage: s.page(r),
-		HWModel:  hwModel,
-		Zones:    states,
+		basePage:   s.page(r),
+		HWModel:    hwModel,
+		Zones:      states,
+		WinterMode: s.cfg.WinterMode,
 	})
 }
 

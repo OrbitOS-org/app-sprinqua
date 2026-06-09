@@ -66,6 +66,11 @@
   "smart_watering_lat": "Latitudine",
   "smart_watering_lon": "Longitudine",
   "smart_watering_threshold": "Salta se pioggia ≥ (mm)",
+  "winter_mode_label": "Modalità Invernale",
+  "winter_mode_desc": "Mette in pausa tutte le irrigazioni programmate. Il controllo manuale rimane disponibile.",
+  "winter_mode_banner_title": "Modalità Invernale Attiva",
+  "winter_mode_banner_desc": "I programmi sono in pausa. Il controllo manuale rimane disponibile.",
+
   "settings_exclusive_label": "Modalità zona esclusiva",
   "settings_exclusive_desc": "Solo una zona attiva alla volta. Attivare una nuova zona spegne quella corrente.",
 

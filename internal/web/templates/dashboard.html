@@ -48,6 +48,16 @@
       <span class="text-xs text-slate-400" id="last-update"></span>
     </div>
 
+    {{if .WinterMode}}
+    <div class="flex items-center gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 mb-4">
+      <span class="text-xl">❄️</span>
+      <div>
+        <p class="text-sm font-semibold text-sky-800">{{.S.winter_mode_banner_title}}</p>
+        <p class="text-xs text-sky-600 mt-0.5">{{.S.winter_mode_banner_desc}}</p>
+      </div>
+    </div>
+    {{end}}
+
     {{template "zones_fragment" .}}
   </main>
 

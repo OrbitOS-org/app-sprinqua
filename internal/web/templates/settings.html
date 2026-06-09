@@ -85,6 +85,22 @@
           </div>
         </div>
 
+        <!-- Winter Mode -->
+        <div class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-4 bg-slate-50 mb-4">
+          <div class="pr-4">
+            <p class="text-sm font-medium text-slate-700">{{.S.winter_mode_label}}</p>
+            <p class="text-xs text-slate-400 mt-0.5">{{.S.winter_mode_desc}}</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+            <input type="checkbox" name="winter_mode" value="1" class="sr-only peer"
+              {{if .WinterMode}}checked{{end}}>
+            <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-sky-500
+              after:content-[''] after:absolute after:top-0.5 after:left-0.5
+              after:bg-white after:rounded-full after:h-5 after:w-5
+              after:transition-all peer-checked:after:translate-x-5"></div>
+          </label>
+        </div>
+
         <!-- Exclusive zone mode -->
         <div class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-4 bg-slate-50 mb-4">
           <div class="pr-4">

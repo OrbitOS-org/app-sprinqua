@@ -66,6 +66,11 @@
   "smart_watering_lat": "Breitengrad",
   "smart_watering_lon": "Längengrad",
   "smart_watering_threshold": "Überspringen wenn Regen ≥ (mm)",
+  "winter_mode_label": "Wintermodus",
+  "winter_mode_desc": "Alle geplanten Bewässerungen pausieren. Manuelle Steuerung bleibt verfügbar.",
+  "winter_mode_banner_title": "Wintermodus aktiv",
+  "winter_mode_banner_desc": "Zeitpläne sind pausiert. Manuelle Steuerung ist weiterhin möglich.",
+
   "settings_exclusive_label": "Exklusiver Zonenmodus",
   "settings_exclusive_desc": "Nur eine Zone gleichzeitig aktiv. Das Aktivieren einer neuen Zone schaltet die aktuelle ab.",
 

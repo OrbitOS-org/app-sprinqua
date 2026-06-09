@@ -17,6 +17,7 @@ type Config struct {
 	TimeFormat    string     `json:"time_format"`    // "24h" | "12h"
 	ExclusiveMode  *bool               `json:"exclusive_mode,omitempty"` // nil = default true
 	SmartWatering  SmartWateringConfig `json:"smart_watering,omitempty"`
+	WinterMode     bool                `json:"winter_mode,omitempty"`
 }
 
 // IsExclusiveMode returns true when at most one zone may be active at a time.

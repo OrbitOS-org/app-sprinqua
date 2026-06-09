@@ -1,6 +1,6 @@
 # Sprinqua — Arquitetura e Estado de Implementação
 
-> Atualizado: 2026-05-08
+> Atualizado: 2026-06-09
 
 ---
 
@@ -11,8 +11,8 @@
 | Setup Wizard (3 passos) | ✅ Implementado |
 | Dashboard + controlo manual | ✅ Implementado |
 | i18n (EN / PT / DE / ES / FR / IT) | ✅ Implementado |
-| Board registry (Keyestudio 4ch, Waveshare 8ch, Waveshare 3ch) | ✅ Implementado |
-| Zone Engine (ON/OFF/Pulse + safety timer) | ✅ Implementado |
+| Board registry (7 boards) | ✅ Implementado |
+| Zone Engine (ON/OFF/Pulse + safety timer + MaxSecs) | ✅ Implementado |
 | Modo zona exclusiva (só 1 relé ativo) | ✅ Implementado |
 | Cores persistentes por canal (CHX) | ✅ Implementado |
 | Formato de hora (24h / 12h) | ✅ Implementado |
@@ -23,10 +23,12 @@
 | Settings page (separada do wizard) | ✅ Implementado |
 | Smart Watering (Open-Meteo, mapa, threshold) | ✅ Implementado |
 | MQTT — config guardada | ✅ Implementado |
-| MQTT — cliente publicação/subscrição HA | ✅ Implementado |
-| MaxSecs enforcement no engine | ⬜ Não implementado |
-| Pulse duration configurável | ⬜ Não implementado |
-| Filtros e estatísticas no histórico | ⬜ Não implementado |
+| MQTT — cliente publicação/subscrição HA (active/passive) | ✅ Implementado |
+| Modo Inverno (pausa scheduler, controlo manual disponível) | ✅ Implementado |
+| Pulse duration configurável | ⬜ Não implementado (UI fixa em 300s; backend já aceita `?secs=`) |
+| Filtros no histórico (por zona, por trigger) | ⬜ Não implementado |
+| Estatísticas — total regado por zona/semana | ⬜ Não implementado |
+| Smart Watering — ajuste proporcional de duração | ⬜ Não implementado |
 
 ---
 
@@ -52,12 +54,14 @@ internal/
     locales/es.json    — Strings ES
     locales/fr.json    — Strings FR
     locales/it.json    — Strings IT
+  mqtt/
+    client.go          — Cliente MQTT (paho); publicação de estado, subscrição de comandos HA, auto-discovery
   scheduler/
-    scheduler.go       — Goroutine de agendamento, NextRunFor, SetEngine, SetHistory
+    scheduler.go       — Goroutine de agendamento, NextRunFor, SetEngine, SetHistory, SetPaused
   weather/
     weather.go         — Fetch Open-Meteo (precipitação diária), cache 1h por localização
   zone/
-    engine.go          — Controlo de relés, exclusive mode, safety timer, estado das zonas
+    engine.go          — Controlo de relés, exclusive mode, safety timer, ActiveLow, estado das zonas
   web/
     server.go          — HTTP server, registo no AppHub, funcMap de templates, cookie lang
     handlers.go        — Todos os handlers HTTP
@@ -65,14 +69,13 @@ internal/
       wizard.html         — Wizard completo + step1 (board) + seletor de idioma
       step2.html          — Configuração de zonas
       step3.html          — Teste de relés (conclui wizard)
-      step4.html          — (legado, não usado)
-      dashboard.html      — Dashboard completo
+      dashboard.html      — Dashboard completo (inclui banner Modo Inverno)
       zones_fragment.html — Fragment HTMX para polling/refresh de zonas
       schedule.html       — Página de programas
       schedule_list.html  — Fragment HTMX com lista + gráfico semanal
       schedule_form.html  — Página de criação/edição de programa (inclui campo Nome)
       history.html        — Histórico de ativações + gráfico 24h + entradas saltadas
-      settings.html       — Settings: idioma, hora, zona exclusiva, MQTT, Smart Watering, hardware
+      settings.html       — Settings: idioma, hora, Modo Inverno, zona exclusiva, MQTT, Smart Watering, hardware
 ```
 
 ---
@@ -122,6 +125,12 @@ Ficheiro: `internal/zone/engine.go`
 - `Pulse(id, secs)` — liga e desliga automaticamente após N segundos
 - `SetExclusive(v bool)` — atualiza o modo em runtime (chamado ao guardar Settings)
 - `States()` — snapshot ordenado do estado de todas as zonas
+- `relayWrite(pin, on)` — abstrai ActiveLow: inverte nível GPIO quando `board.ActiveLow == true`
+
+**Safety timer (MaxSecs)**
+- Configurado por zona em `max_secs` (segundos); default 30 min se ≤ 0
+- `TurnOn` lança goroutine que chama `TurnOff` automaticamente após `maxSecs` segundos
+- Timer cancelado quando a zona é desligada manualmente ou substituída por novo `TurnOn`
 
 **Exclusive Zone Mode** (default: ON)
 - Guardado em `config.json` como `exclusive_mode` (`*bool`, nil = default true)
@@ -137,10 +146,15 @@ Ficheiro: `internal/board/registry.go`
 | ID | Nome | Canais | GPIOs | ActiveLow |
 |---|---|---|---|---|
 | `keyestudio-4ch` | Keyestudio RPI 4-Channel Relay | 4 | 26,20,21,16 | false |
-| `waveshare-8ch` | Waveshare RPi 8-Channel Relay | 8 | 5,6,13,16,19,20,21,26 | false |
+| `seengreat-4ch` | Seengreat 4-CH Relay HAT | 4 | 6,13,19,26 | false |
+| `bc-robotics-4ch` | BC Robotics 4-Channel Relay HAT | 4 | 5,6,13,22 | false |
 | `waveshare-3ch` | Waveshare RPi 3-Channel Relay | 3 | 26,20,21 | false |
+| `seengreat-3ch` | Seengreat 3-CH Relay HAT | 3 | — | false |
+| `waveshare-pi0-6ch` | Waveshare RPi Zero 6-ch Relay | 6 | 5,6,13,16,19,20 | false |
+| `waveshare-8ch` | Waveshare RPi 8-Channel Relay | 8 | 5,6,13,16,19,20,21,26 | **true** |
+| `seengreat-8ch` | Seengreat 8-CH Relay Board | 8 | 6,13,19,26,12,… | false |
 
-`ActiveLow: false` — GPIO HIGH = relé ON, GPIO LOW = relé OFF.
+`ActiveLow: true` — GPIO LOW = relé ON, GPIO HIGH = relé OFF (ex: `waveshare-8ch`).
 
 ---
 
@@ -197,8 +211,13 @@ Ficheiro: `internal/scheduler/scheduler.go`
 - `lastRun map[int]time.Time` previne disparo duplo na mesma janela de um minuto
 - `SetEngine(eng)` — injeção tardia após wizard concluído
 - `SetHistory(hist)` — injeção do store de histórico
+- `SetPaused(bool)` — pausa/retoma o scheduler em runtime
 - `NextRunFor(sched)` — calcula a próxima data/hora de execução (até 7 dias à frente)
 - **Smart Watering check**: antes de executar, verifica `weather.FetchToday(lat, lon)`; se `rain >= threshold` chama `hist.Skip()` e aborta
+
+**Scheduler fica pausado quando:**
+- MQTT está em modo `passive` (HA tem controlo total)
+- **Modo Inverno** está ativo
 
 ---
 
@@ -206,7 +225,7 @@ Ficheiro: `internal/scheduler/scheduler.go`
 
 Ficheiro: `internal/history/history.go`
 
-- `Entry` — ID, ZoneID, ZoneName, Channel, Trigger (manual/schedule/pulse), StartedAt, EndedAt, DurSecs, **Skipped bool**
+- `Entry` — ID, ZoneID, ZoneName, Channel, Trigger (manual/schedule/pulse/mqtt), StartedAt, EndedAt, DurSecs, **Skipped bool**
 - `Store` — mutex + slice de entradas + nextID; persiste em `history.json` (máx 500 entradas)
 - `Start(zoneID, trigger)` — cria nova entrada; fecha automaticamente entrada aberta para a mesma zona
 - `Stop(zoneID)` — fecha a entrada aberta, calcula DurSecs
@@ -242,7 +261,41 @@ Ficheiro: `internal/weather/weather.go`
 
 ---
 
-## 11. Gráfico semanal (Gantt)
+## 11. Modo Inverno
+
+Configurado em Settings (toggle azul ❄️).
+
+- `WinterMode bool` em `config.json` (`"winter_mode"`)
+- Ao ativar: `sched.SetPaused(true)` — nenhum programa é executado automaticamente
+- **Controlo manual continua a funcionar** (ON/OFF/Pulse no dashboard)
+- Banner azul ❄️ no dashboard enquanto ativo: *"Schedules are paused. Manual control is still available."*
+- Aplicado no arranque: se `winter_mode: true` no `config.json`, scheduler arranca pausado
+- Pausa combinada: scheduler pausa se `WinterMode || MQTT.IsPassive()`
+
+---
+
+## 12. MQTT
+
+Ficheiro: `internal/mqtt/client.go`
+
+- Biblioteca: **paho.mqtt.golang**
+- `Connect(cfg, zones, engine, hist)` — liga ao broker, subscreve tópicos, publica estado inicial
+- `Disconnect()` — desliga limpo, remove callback do engine
+- `OnModeChange func(string)` — callback chamado quando HA envia comando de modo
+
+**Dois modos de operação:**
+- **Standalone (active)**: Sprinqua executa os seus próprios programas; HA recebe atualizações de estado
+- **HA Managed (passive)**: programas internos pausados; HA tem controlo total via MQTT
+
+**Auto-discovery Home Assistant**
+- Publica config de `switch` para cada zona em `homeassistant/switch/<prefix>_zone_<id>/config`
+- Tópicos de estado: `<prefix>/zone/<id>/state` — payload `ON` / `OFF`
+- Tópicos de comando: `<prefix>/zone/<id>/set` — aceita `ON`, `OFF`
+- Tópico de modo: `<prefix>/mode/set` — aceita `active`, `passive`
+
+---
+
+## 13. Gráfico semanal (Gantt)
 
 Renderizado em `schedule_list.html` (atualiza com toggle/delete via HTMX).
 
@@ -254,7 +307,7 @@ Renderizado em `schedule_list.html` (atualiza com toggle/delete via HTMX).
 
 ---
 
-## 12. Configuração persistida
+## 14. Configuração persistida
 
 Ficheiro: `config.json` no working directory da app
 
@@ -264,6 +317,7 @@ Ficheiro: `config.json` no working directory da app
   "board": "waveshare-8ch",
   "time_format": "24h",
   "exclusive_mode": true,
+  "winter_mode": false,
   "zones": [
     { "id": 1, "name": "Jardim", "channel": 1, "type": "sprinkler", "max_secs": 1800, "enabled": true }
   ],
@@ -276,7 +330,8 @@ Ficheiro: `config.json` no working directory da app
     "port": 1883,
     "prefix": "sprinqua",
     "username": "",
-    "password": ""
+    "password": "",
+    "mode": "active"
   },
   "smart_watering": {
     "enabled": true,
@@ -289,7 +344,7 @@ Ficheiro: `config.json` no working directory da app
 
 ---
 
-## 13. Manifest OrbitOS
+## 15. Manifest OrbitOS
 
 ```json
 {
@@ -305,9 +360,7 @@ Ficheiro: `config.json` no working directory da app
 
 | Módulo | Valor | Complexidade |
 |---|---|---|
-| MQTT cliente — publicar estado das zonas no Home Assistant | Alto | Alta |
-| MaxSecs enforcement — auto-off em ativações manuais | Médio | Baixa |
-| Pulse duration configurável (atualmente fixo a 5 min) | Médio | Baixa |
+| Pulse duration configurável na UI (backend já suporta `?secs=`) | Médio | Baixa |
 | Filtros no histórico (por zona, por trigger) | Médio | Baixa |
 | Estatísticas — total regado por zona/semana | Médio | Média |
 | Smart Watering — ajuste proporcional de duração (em vez de skip total) | Médio | Média |

@@ -174,9 +174,11 @@
             </a>
             <div class="bg-slate-900 rounded-xl px-5 py-4 font-mono text-sm text-slate-300 space-y-1 mb-4">
               <p><span class="text-slate-500" data-i18n="s1_c1"># Download the installer</span></p>
-              <p><span class="text-slate-400">wget</span> <span class="text-emerald-400">https://orbit-os.org/orbit-os-26-installer.deb</span></p>
-              <p class="mt-3"><span class="text-slate-500" data-i18n="s1_c2"># Install it</span></p>
-              <p><span class="text-slate-400">sudo dpkg -i</span> <span class="text-emerald-400">orbit-os-26-installer.deb</span></p>
+              <p><span class="text-slate-400">wget</span> <span class="text-emerald-400">https://www.orbit-os.org/downloads/installer/orbit-os-26-installer.run</span></p>
+              <p class="mt-3"><span class="text-slate-500" data-i18n="s1_c2"># Change permissions to executable</span></p>
+              <p><span class="text-slate-400">chmod +x</span> <span class="text-emerald-400">orbit-os-26-installer.run</span></p>
+              <p class="mt-3"><span class="text-slate-500" data-i18n="s1_c3"># Install</span></p>
+              <p><span class="text-slate-400">sudo ./</span><span class="text-emerald-400">orbit-os-26-installer.run</span></p>
             </div>
             <a href="https://orbit-os.org/getting_started.html" class="inline-flex items-center gap-2 bg-slate-900 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-slate-700 transition-colors" data-i18n="s1_btn">
               Orbit OS Getting Started →
@@ -436,7 +438,8 @@
       s1_p: 'Download the Orbit OS installer and run it on your Raspberry Pi. It sets up the OS, the app runtime, and the store in one go. After installation, the device will automatically restart.',
       s1_skip: 'Already have Orbit OS with a Store account? Skip to step 4 →',
       s1_c1: '# Download the installer',
-      s1_c2: '# Install it',
+      s1_c2: '# Change permissions to executable',
+      s1_c3: '# Install',
       s1_btn: 'Orbit OS Getting Started →',
       s2_h3: 'Open the Orbit OS Launcher in your browser',
       s2_p: 'Open a browser on any device on the same network and navigate to your Raspberry Pi\\\'s address. The Orbit OS Launcher will open and ask for your username and password.',
@@ -513,7 +516,8 @@
       s1_p: 'Descarrega o instalador do Orbit OS e corre-o no teu Raspberry Pi. Configura o OS, o runtime das apps, e a loja de uma vez. Após instalação, o dispositivo reinicia automaticamente.',
       s1_skip: 'Já tens Orbit OS com conta na loja? Salta para o passo 4 →',
       s1_c1: '# Descarregar o instalador',
-      s1_c2: '# Instalar',
+      s1_c2: '# Dar permissões de execução',
+      s1_c3: '# Instalar',
       s1_btn: 'Orbit OS Começar →',
       s2_h3: 'Abrir o Launcher do Orbit OS no browser',
       s2_p: 'Abre um browser em qualquer dispositivo na mesma rede e navega para o endereço do teu Raspberry Pi. O Launcher do Orbit OS abre e pede username e password.',
@@ -590,7 +594,8 @@
       s1_p: 'Descarga el instalador de Orbit OS y ejecútalo en tu Raspberry Pi. Configura el SO, el runtime de las apps y la tienda en un solo paso. Tras la instalación, el dispositivo se reinicia automáticamente.',
       s1_skip: '¿Ya tienes Orbit OS con cuenta en la tienda? Salta al paso 4 →',
       s1_c1: '# Descargar el instalador',
-      s1_c2: '# Instalarlo',
+      s1_c2: '# Dar permisos de ejecución',
+      s1_c3: '# Instalar',
       s1_btn: 'Primeros pasos con Orbit OS →',
       s2_h3: 'Abrir el lanzador de Orbit OS en el navegador',
       s2_p: 'Abre un navegador en cualquier dispositivo de la misma red y ve a la dirección de tu Raspberry Pi. Se abrirá el lanzador de Orbit OS y te pedirá usuario y contraseña.',
@@ -667,7 +672,8 @@
       s1_p: 'Téléchargez l\\\'installateur Orbit OS et exécutez-le sur votre Raspberry Pi. Il configure le système d\\\'exploitation, l\\\'environnement d\\\'exécution et la boutique en une seule fois. Après l\\\'installation, l\\\'appareil redémarre automatiquement.',
       s1_skip: 'Vous avez déjà Orbit OS avec un compte boutique ? Passer à l\\\'étape 4 →',
       s1_c1: '# Télécharger l\\\'installateur',
-      s1_c2: '# L\\\'installer',
+      s1_c2: '# Rendre exécutable',
+      s1_c3: '# Installer',
       s1_btn: 'Premiers pas avec Orbit OS →',
       s2_h3: 'Ouvrir le lanceur Orbit OS dans votre navigateur',
       s2_p: 'Ouvrez un navigateur sur n\\\'importe quel appareil du même réseau et accédez à l\\\'adresse de votre Raspberry Pi. Le lanceur Orbit OS s\\\'ouvrira et vous demandera votre nom d\\\'utilisateur et votre mot de passe.',
@@ -744,7 +750,8 @@
       s1_p: 'Laden Sie den Orbit OS-Installer herunter und führen Sie ihn auf Ihrem Raspberry Pi aus. Er richtet das OS, die App-Laufzeit und den Store in einem Schritt ein. Nach der Installation startet das Gerät automatisch neu.',
       s1_skip: 'Haben Sie bereits Orbit OS mit einem Store-Konto? Zum Schritt 4 springen →',
       s1_c1: '# Installer herunterladen',
-      s1_c2: '# Installieren',
+      s1_c2: '# Ausführungsrechte setzen',
+      s1_c3: '# Installieren',
       s1_btn: 'Orbit OS – Erste Schritte →',
       s2_h3: 'Orbit OS Launcher im Browser öffnen',
       s2_p: 'Öffnen Sie einen Browser auf einem Gerät im selben Netzwerk und navigieren Sie zur Adresse des Raspberry Pi. Der Orbit OS Launcher öffnet sich und fragt nach Benutzername und Passwort.',
@@ -821,7 +828,8 @@
       s1_p: 'Scarica il programma di installazione di Orbit OS ed eseguilo sul tuo Raspberry Pi. Configura il sistema operativo, il runtime delle app e lo store in un unico passaggio. Dopo l\\\'installazione, il dispositivo si riavvia automaticamente.',
       s1_skip: 'Hai già Orbit OS con un account store? Vai al passo 4 →',
       s1_c1: '# Scarica il programma di installazione',
-      s1_c2: '# Installalo',
+      s1_c2: '# Rendi eseguibile',
+      s1_c3: '# Installa',
       s1_btn: 'Orbit OS — Primi passi →',
       s2_h3: 'Apri il launcher Orbit OS nel browser',
       s2_p: 'Apri un browser su qualsiasi dispositivo della stessa rete e vai all\\\'indirizzo del tuo Raspberry Pi. Il launcher Orbit OS si aprirà e ti chiederà nome utente e password.',

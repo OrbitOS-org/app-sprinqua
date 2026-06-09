@@ -66,6 +66,11 @@
   "smart_watering_lat": "Latitude",
   "smart_watering_lon": "Longitude",
   "smart_watering_threshold": "Ignorer si pluie ≥ (mm)",
+  "winter_mode_label": "Mode Hiver",
+  "winter_mode_desc": "Met en pause toutes les irrigations planifiées. Le contrôle manuel reste disponible.",
+  "winter_mode_banner_title": "Mode Hiver Actif",
+  "winter_mode_banner_desc": "Les programmes sont en pause. Le contrôle manuel reste disponible.",
+
   "settings_exclusive_label": "Mode zone exclusive",
   "settings_exclusive_desc": "Une seule zone active à la fois. L’activation d’une nouvelle zone éteint la zone actuelle.",
 

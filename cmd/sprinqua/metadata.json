@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "description": "Smart irrigation controller for Raspberry Pi relay boards",
   "permissions": [
+    "AppHubService/*",
     "GpioService/*",
     "SystemService/*"
   ]

@@ -107,7 +107,7 @@ func New(
 	if cfg.SetupDone && eng != nil {
 		mc.Connect(cfg.MQTT, cfg.Zones, eng, hist)
 	}
-	if cfg.MQTT.IsPassive() {
+	if cfg.MQTT.IsPassive() || cfg.WinterMode {
 		sched.SetPaused(true)
 	}
 
