@@ -13,10 +13,12 @@ import (
 type Trigger string
 
 const (
-	Manual   Trigger = "manual"
-	Schedule Trigger = "schedule"
-	Pulse    Trigger = "pulse"
-	MQTT     Trigger = "mqtt"
+	Manual    Trigger = "manual"
+	Schedule  Trigger = "schedule"
+	Pulse     Trigger = "pulse"
+	MQTT      Trigger = "mqtt"
+	SkipRain  Trigger = "skip_rain"
+	SkipFrost Trigger = "skip_frost"
 
 	maxEntries = 500
 )

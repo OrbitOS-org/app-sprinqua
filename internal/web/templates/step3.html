@@ -37,7 +37,9 @@
           hx-post="/setup/test/{{$z.Channel}}"
           hx-target="#test-result-{{$z.Channel}}"
           hx-swap="innerHTML"
-          class="flex-shrink-0 bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors whitespace-nowrap min-w-[4.5rem]">
+          hx-on:htmx:before-request="if(!testLock()){event.preventDefault();}"
+          hx-on:htmx:after-request="testUnlockOnError(event)"
+          class="test-btn flex-shrink-0 bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors whitespace-nowrap min-w-[4.5rem] disabled:opacity-40 disabled:cursor-not-allowed">
           {{$.S.step3_btn_test}}
         </button>
       </div>
@@ -45,6 +47,26 @@
     </div>
     {{end}}
   </div>
+
+  <script>
+    var _testBusy = false;
+    var _testTimer = null;
+    function testLock() {
+      if (_testBusy) return false;
+      _testBusy = true;
+      document.querySelectorAll('.test-btn').forEach(function(b) { b.disabled = true; });
+      _testTimer = setTimeout(function() { testUnlock(); }, 3300);
+      return true;
+    }
+    function testUnlock() {
+      _testBusy = false;
+      clearTimeout(_testTimer);
+      document.querySelectorAll('.test-btn').forEach(function(b) { b.disabled = false; });
+    }
+    function testUnlockOnError(evt) {
+      if (evt.detail.xhr && evt.detail.xhr.status === 409) testUnlock();
+    }
+  </script>
 
   <form hx-post="/setup/step/3" hx-target="#wizard-content" hx-swap="innerHTML">
     <button type="submit"

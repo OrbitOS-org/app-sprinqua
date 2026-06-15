@@ -202,6 +202,10 @@ func (s *Server) handleSettingsSave(w http.ResponseWriter, r *http.Request) {
 	if swThresh <= 0 {
 		swThresh = 2.0
 	}
+	swFrost, _ := strconv.ParseFloat(r.FormValue("sw_frost_threshold"), 64)
+	if swFrost < 0 {
+		swFrost = 0
+	}
 	swMethod := r.FormValue("sw_method")
 	switch swMethod {
 	case "manual", "monthly", "zimmerman", "eto":
@@ -239,6 +243,7 @@ func (s *Server) handleSettingsSave(w http.ResponseWriter, r *http.Request) {
 		Lat:                     swLat,
 		Lon:                     swLon,
 		RainThresholdMM:         swThresh,
+		FrostThresholdC:         swFrost,
 		Method:                  swMethod,
 		ManualPct:               swManualPct,
 		MonthlyPct:              swMonthly,
@@ -278,6 +283,7 @@ func (s *Server) handleSetupReset(w http.ResponseWriter, r *http.Request) {
 	s.cfg.Board = ""
 	s.cfg.Zones = nil
 	s.cfg.Schedules = nil
+	s.cfg.SmartWatering = config.SmartWateringConfig{}
 	// Intentionally keep TimeFormat and MQTT — they are preferences, not HW config.
 
 	s.engine = nil
@@ -412,21 +418,27 @@ func (s *Server) handleSetupTest(w http.ResponseWriter, r *http.Request) {
 		offLevel = client.GPIO_LEVEL_HIGH
 	}
 
-	// Cancel any previous test pulse on this channel.
+	// Allow only one relay test at a time — reject if already active.
 	s.testMu.Lock()
-	if prev, ok := s.testCancels[ch]; ok {
-		prev()
+	if s.testCancel != nil {
+		s.testMu.Unlock()
+		http.Error(w, "test already active", http.StatusConflict)
+		return
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	s.testCancels[ch] = cancel
+	s.testCancel = cancel
 	s.testMu.Unlock()
 
-	_ = s.gpio.SetLevel(pin, offLevel) // ensure known OFF state first
+	_ = s.gpio.SetLevel(pin, offLevel)
 	if err := s.gpio.SetLevel(pin, onLevel); err != nil {
 		logger.Warnf(logTag, "test ch%d ON: %v", ch, err)
 	}
 	go func() {
-		defer cancel()
+		defer func() {
+			s.testMu.Lock()
+			s.testCancel = nil
+			s.testMu.Unlock()
+		}()
 		select {
 		case <-time.After(3 * time.Second):
 			if err := s.gpio.SetLevel(pin, offLevel); err != nil {
@@ -636,6 +648,7 @@ type scheduleFormData struct {
 	IsNew                bool
 	DaysError            bool
 	SmartWateringEnabled bool
+	Use12h               bool
 }
 
 func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
@@ -851,6 +864,7 @@ func (s *Server) handleScheduleNew(w http.ResponseWriter, r *http.Request) {
 		IsNew:                true,
 		DaysError:            r.URL.Query().Get("err") == "days",
 		SmartWateringEnabled: s.cfg.SmartWatering.Enabled,
+		Use12h:               s.cfg.TimeFormat == "12h",
 	})
 }
 
@@ -869,6 +883,7 @@ func (s *Server) handleScheduleEdit(w http.ResponseWriter, r *http.Request) {
 				IsNew:                false,
 				DaysError:            r.URL.Query().Get("err") == "days",
 				SmartWateringEnabled: s.cfg.SmartWatering.Enabled,
+				Use12h:               s.cfg.TimeFormat == "12h",
 			})
 			return
 		}
@@ -978,10 +993,11 @@ type historyStats struct {
 
 type historyPageData struct {
 	basePage
-	Stats      historyStats
-	Entries    []historyEntryView
-	ChartRows  []historyChartRow
-	ChartRuler [5]string
+	Stats          historyStats
+	Entries        []historyEntryView
+	ChartRows      []historyChartRow
+	ChartRuler     [5]string
+	ChartRangeStr  string
 }
 
 func (s *Server) handleHistory(w http.ResponseWriter, r *http.Request) {
@@ -1011,7 +1027,12 @@ func (s *Server) handleHistory(w http.ResponseWriter, r *http.Request) {
 
 		var trigLabel string
 		if e.Skipped {
-			trigLabel = pg.S["hist_trigger_skipped_sw"]
+			switch e.Trigger {
+			case history.SkipFrost:
+				trigLabel = pg.S["hist_trigger_skipped_frost"]
+			default:
+				trigLabel = pg.S["hist_trigger_skipped_sw"]
+			}
 		} else {
 			switch e.Trigger {
 			case history.Manual:
@@ -1051,15 +1072,73 @@ func (s *Server) handleHistory(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	// ── 24h timeline chart ────────────────────────────────────────────────────
+	// ── 24h timeline chart — adaptive zoom ───────────────────────────────────
 	now := time.Now()
 	windowStart := now.Add(-24 * time.Hour)
-	windowSecs := 24 * 60 * 60.0
 
-	// Ruler: 5 marks spaced 6h apart.
+	// Pass 1: find the actual span of activations in the last 24h.
+	var rMin, rMax time.Time
+	hasData := false
+	for _, e := range allEntries {
+		if e.Skipped {
+			continue
+		}
+		eEnd := now
+		if e.EndedAt != nil {
+			eEnd = *e.EndedAt
+		}
+		if eEnd.Before(windowStart) || e.StartedAt.After(now) {
+			continue
+		}
+		if !hasData || e.StartedAt.Before(rMin) {
+			rMin = e.StartedAt
+		}
+		if !hasData || eEnd.After(rMax) {
+			rMax = eEnd
+		}
+		hasData = true
+	}
+
+	// Derive adaptive window: pad around actual span, clamp to 24h, enforce 2h minimum.
+	adaptStart, adaptEnd := windowStart, now
+	if hasData {
+		pad := rMax.Sub(rMin) / 5
+		if pad < 30*time.Minute {
+			pad = 30 * time.Minute
+		}
+		adaptStart = rMin.Add(-pad)
+		adaptEnd = rMax.Add(pad)
+		if adaptStart.Before(windowStart) {
+			adaptStart = windowStart
+		}
+		if adaptEnd.After(now) {
+			adaptEnd = now
+		}
+		const minSpan = 2 * time.Hour
+		if adaptEnd.Sub(adaptStart) < minSpan {
+			mid := adaptStart.Add(adaptEnd.Sub(adaptStart) / 2)
+			ns := mid.Add(-minSpan / 2)
+			ne := mid.Add(minSpan / 2)
+			if ns.Before(windowStart) {
+				ns = windowStart
+				ne = ns.Add(minSpan)
+			}
+			if ne.After(now) {
+				ne = now
+				ns = ne.Add(-minSpan)
+				if ns.Before(windowStart) {
+					ns = windowStart
+				}
+			}
+			adaptStart, adaptEnd = ns, ne
+		}
+	}
+	windowSecs := adaptEnd.Sub(adaptStart).Seconds()
+
+	// Ruler: 5 marks evenly spaced across the adaptive window.
 	var ruler [5]string
 	for i := range ruler {
-		t := windowStart.Add(time.Duration(i) * 6 * time.Hour)
+		t := adaptStart.Add(time.Duration(float64(adaptEnd.Sub(adaptStart)) * float64(i) / 4.0))
 		if use12h {
 			ruler[i] = t.Format("3:04PM")
 		} else {
@@ -1067,6 +1146,21 @@ func (s *Server) handleHistory(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Chart range label for the footer.
+	spanDur := adaptEnd.Sub(adaptStart)
+	spanH := int(spanDur.Hours())
+	spanM := int(spanDur.Minutes()) % 60
+	var chartRangeStr string
+	switch {
+	case spanH > 0 && spanM > 0:
+		chartRangeStr = fmt.Sprintf("%dh %dmin", spanH, spanM)
+	case spanH > 0:
+		chartRangeStr = fmt.Sprintf("%dh", spanH)
+	default:
+		chartRangeStr = fmt.Sprintf("%dmin", spanM)
+	}
+
+	// Pass 2: build bars clipped to the adaptive window.
 	chartRows := make([]historyChartRow, 0, len(s.cfg.Zones))
 	for _, z := range s.cfg.Zones {
 		idx := zoneIdx[z.ID]
@@ -1076,33 +1170,32 @@ func (s *Server) handleHistory(w http.ResponseWriter, r *http.Request) {
 			if e.ZoneID != z.ID || e.Skipped {
 				continue
 			}
-			end := now
+			eEnd := now
 			if e.EndedAt != nil {
-				end = *e.EndedAt
+				eEnd = *e.EndedAt
 			}
-			if end.Before(windowStart) || e.StartedAt.After(now) {
+			if eEnd.Before(adaptStart) || e.StartedAt.After(adaptEnd) {
 				continue
 			}
 			cStart := e.StartedAt
-			if cStart.Before(windowStart) {
-				cStart = windowStart
+			if cStart.Before(adaptStart) {
+				cStart = adaptStart
 			}
-			cEnd := end
-			if cEnd.After(now) {
-				cEnd = now
+			cEnd := eEnd
+			if cEnd.After(adaptEnd) {
+				cEnd = adaptEnd
 			}
-			leftPct := cStart.Sub(windowStart).Seconds() / windowSecs * 100
+			leftPct := cStart.Sub(adaptStart).Seconds() / windowSecs * 100
 			widthPct := cEnd.Sub(cStart).Seconds() / windowSecs * 100
-			if widthPct < 0.4 {
-				widthPct = 0.4
+			if widthPct < 0.5 {
+				widthPct = 0.5
 			}
-
 			var ttDur string
 			if e.EndedAt != nil {
-				m := e.DurSecs / 60
+				dm := e.DurSecs / 60
 				sec := e.DurSecs % 60
-				if m > 0 {
-					ttDur = fmt.Sprintf("%dm%ds", m, sec)
+				if dm > 0 {
+					ttDur = fmt.Sprintf("%dm%ds", dm, sec)
 				} else {
 					ttDur = fmt.Sprintf("%ds", sec)
 				}
@@ -1169,8 +1262,9 @@ func (s *Server) handleHistory(w http.ResponseWriter, r *http.Request) {
 		basePage:   pg,
 		Stats:      historyStats{DurStr: durStr, Runs: runs, Skipped: skipped, TopZone: topZone},
 		Entries:    views,
-		ChartRows:  chartRows,
-		ChartRuler: ruler,
+		ChartRows:     chartRows,
+		ChartRuler:    ruler,
+		ChartRangeStr: chartRangeStr,
 	})
 }
 

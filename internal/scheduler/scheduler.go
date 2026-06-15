@@ -120,12 +120,21 @@ func runSchedule(eng *zone.Engine, sched config.Schedule, hist *history.Store, s
 		res, err := weather.FetchToday(sw.Lat, sw.Lon)
 		if err != nil {
 			logger.Warnf(logTag, "schedule %d: weather fetch failed: %v", sched.ID, err)
-		} else if res.RainMM >= sw.EffectiveThreshold() {
-			logger.Infof(logTag, "schedule %d skipped: rain %.1fmm >= threshold %.1fmm", sched.ID, res.RainMM, sw.EffectiveThreshold())
-			if hist != nil {
-				hist.Skip(sched.ZoneID, history.Schedule)
+		} else {
+			if res.RainMM >= sw.EffectiveThreshold() {
+				logger.Infof(logTag, "schedule %d skipped: rain %.1fmm >= %.1fmm", sched.ID, res.RainMM, sw.EffectiveThreshold())
+				if hist != nil {
+					hist.Skip(sched.ZoneID, history.SkipRain)
+				}
+				return
 			}
-			return
+			if sw.FrostThresholdC > 0 && res.TempMinC < sw.FrostThresholdC {
+				logger.Infof(logTag, "schedule %d skipped: min temp %.1f°C < %.1f°C", sched.ID, res.TempMinC, sw.FrostThresholdC)
+				if hist != nil {
+					hist.Skip(sched.ZoneID, history.SkipFrost)
+				}
+				return
+			}
 		}
 	}
 

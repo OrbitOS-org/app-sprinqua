@@ -69,6 +69,7 @@ type SmartWateringConfig struct {
 	Lat             float64     `json:"lat"`
 	Lon             float64     `json:"lon"`
 	RainThresholdMM float64     `json:"rain_threshold_mm"` // skip if daily rain >= this; 0 → default 2mm
+	FrostThresholdC float64     `json:"frost_threshold_c,omitempty"` // skip if today's min temp < this; 0 = disabled
 	Method          string      `json:"method,omitempty"`  // "" | "manual" | "monthly" | "zimmerman" | "eto"
 	ManualPct       float64     `json:"manual_pct,omitempty"`
 	MonthlyPct      [12]float64 `json:"monthly_pct"`

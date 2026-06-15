@@ -70,8 +70,8 @@ type Server struct {
 	appHub         *client.AppHubManager
 	mqttClient     *mqtt.Client
 	tmpl           *template.Template
-	testMu         sync.Mutex
-	testCancels    map[int]context.CancelFunc
+	testMu     sync.Mutex
+	testCancel context.CancelFunc // non-nil while a relay test is active
 	etoMu          sync.Mutex
 	etoCalculating bool
 }
@@ -100,7 +100,6 @@ func New(
 		system:      c.SystemManager,
 		appHub:      c.AppHubManager,
 		tmpl:        tmpl,
-		testCancels: make(map[int]context.CancelFunc),
 	}
 
 	mc := mqtt.New()

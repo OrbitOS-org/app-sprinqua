@@ -235,27 +235,33 @@
                 class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
             </div>
           </div>
-          <div>
-            <label class="block text-xs font-medium text-slate-500 mb-1">{{.S.smart_watering_threshold}}</label>
-            <input type="number" name="sw_threshold" value="{{.SmartWatering.RainThresholdMM}}" step="0.5" min="0.5"
-              inputmode="decimal"
-              class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">{{.S.smart_watering_threshold}}</label>
+              <div class="flex items-center gap-2">
+                <input type="number" name="sw_threshold" value="{{.SmartWatering.RainThresholdMM}}" step="0.5" min="0.5"
+                  inputmode="decimal"
+                  class="flex-1 rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                <span class="text-sm text-slate-400 flex-shrink-0">mm</span>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">{{.S.sw_frost_threshold}}</label>
+              <div class="flex items-center gap-2">
+                <input type="number" name="sw_frost_threshold"
+                  value="{{.SmartWatering.FrostThresholdC}}"
+                  step="0.5" inputmode="decimal" placeholder="0"
+                  class="flex-1 rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                <span class="text-sm text-slate-400 flex-shrink-0">°C</span>
+              </div>
+            </div>
           </div>
+          <p class="text-xs text-slate-400 -mt-1">{{.S.sw_frost_hint}}</p>
 
           <!-- Adjustment method -->
           <div>
             <p class="text-xs font-medium text-slate-500 mb-2">{{.S.sw_method_label}}</p>
             <div class="space-y-2">
-              <label class="flex items-start gap-3 rounded-xl border-2 px-4 py-3 cursor-pointer transition-colors
-                {{if eq .SmartWatering.Method ""}}border-emerald-400 bg-emerald-50{{else}}border-slate-200 bg-white hover:border-slate-300{{end}}">
-                <input type="radio" name="sw_method" value="" class="mt-0.5 accent-emerald-600"
-                  {{if eq .SmartWatering.Method ""}}checked{{end}}
-                  onchange="swMethod('')">
-                <div>
-                  <p class="text-sm font-semibold text-slate-800">{{.S.sw_method_none}}</p>
-                  <p class="text-xs text-slate-400 mt-0.5">{{.S.sw_method_none_desc}}</p>
-                </div>
-              </label>
               <label class="flex items-start gap-3 rounded-xl border-2 px-4 py-3 cursor-pointer transition-colors
                 {{if eq .SmartWatering.Method "manual"}}border-emerald-400 bg-emerald-50{{else}}border-slate-200 bg-white hover:border-slate-300{{end}}">
                 <input type="radio" name="sw_method" value="manual" class="mt-0.5 accent-emerald-600"
@@ -274,6 +280,16 @@
                 <div>
                   <p class="text-sm font-semibold text-slate-800">{{.S.sw_method_monthly}}</p>
                   <p class="text-xs text-slate-400 mt-0.5">{{.S.sw_method_monthly_desc}}</p>
+                </div>
+              </label>
+              <label class="flex items-start gap-3 rounded-xl border-2 px-4 py-3 cursor-pointer transition-colors
+                {{if eq .SmartWatering.Method ""}}border-slate-300 bg-slate-50{{else}}border-slate-200 bg-white hover:border-slate-300{{end}}">
+                <input type="radio" name="sw_method" value="" class="mt-0.5 accent-slate-500"
+                  {{if eq .SmartWatering.Method ""}}checked{{end}}
+                  onchange="swMethod('')">
+                <div>
+                  <p class="text-sm font-semibold text-slate-600">{{.S.sw_method_none}}</p>
+                  <p class="text-xs text-slate-400 mt-0.5">{{.S.sw_method_none_desc}}</p>
                 </div>
               </label>
               <label class="flex items-start gap-3 rounded-xl border-2 px-4 py-3 cursor-pointer transition-colors

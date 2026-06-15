@@ -9,14 +9,15 @@ import (
 )
 
 const (
-	forecastURL = "https://api.open-meteo.com/v1/forecast?latitude=%g&longitude=%g&daily=precipitation_sum&forecast_days=1&timezone=auto"
+	forecastURL = "https://api.open-meteo.com/v1/forecast?latitude=%g&longitude=%g&daily=precipitation_sum,temperature_2m_min&forecast_days=1&timezone=auto"
 	yesterdayURL = "https://api.open-meteo.com/v1/forecast?latitude=%g&longitude=%g&daily=precipitation_sum,temperature_2m_max,temperature_2m_min,relative_humidity_2m_mean,et0_fao_evapotranspiration&past_days=1&forecast_days=0&timezone=auto"
 	archiveURL  = "https://archive-api.open-meteo.com/v1/archive?latitude=%g&longitude=%g&start_date=%s&end_date=%s&daily=et0_fao_evapotranspiration&timezone=auto"
 )
 
-// Result holds today's rain forecast (legacy, used by the skip-rain check).
+// Result holds today's forecast, used by the rain and frost skip checks.
 type Result struct {
 	RainMM    float64
+	TempMinC  float64
 	FetchedAt time.Time
 }
 
@@ -67,6 +68,7 @@ func FetchToday(lat, lon float64) (*Result, error) {
 	var body struct {
 		Daily struct {
 			PrecipitationSum []float64 `json:"precipitation_sum"`
+			TempMin          []float64 `json:"temperature_2m_min"`
 		} `json:"daily"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
@@ -76,7 +78,11 @@ func FetchToday(lat, lon float64) (*Result, error) {
 		return nil, fmt.Errorf("open-meteo: no data")
 	}
 
-	r := &Result{RainMM: body.Daily.PrecipitationSum[0], FetchedAt: time.Now()}
+	r := &Result{
+		RainMM:    body.Daily.PrecipitationSum[0],
+		TempMinC:  safeIdx(body.Daily.TempMin, 0),
+		FetchedAt: time.Now(),
+	}
 	mu.Lock()
 	todayCache[key] = r
 	mu.Unlock()
