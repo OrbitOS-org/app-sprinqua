@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"sort"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/OrbitOS-org/sdk-go/v26/client"
@@ -94,6 +96,7 @@ type settingsData struct {
 	SetupDone       bool
 	BoardName       string
 	ZoneCount       int
+	Zones           []config.Zone
 	SupportedLangs  []langOption
 }
 
@@ -139,6 +142,7 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		SetupDone:       s.cfg.SetupDone,
 		BoardName:       boardName,
 		ZoneCount:       len(s.cfg.Zones),
+		Zones:           s.cfg.Zones,
 		SupportedLangs:  langs,
 	})
 }
@@ -277,6 +281,54 @@ func (s *Server) handleSettingsSave(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/setup", http.StatusFound)
 }
 
+// handleZonesSave updates the existing zones' name, type, max duration and
+// enabled flag without touching the board, schedules or history.
+func (s *Server) handleZonesSave(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "bad form", http.StatusBadRequest)
+		return
+	}
+
+	for i := range s.cfg.Zones {
+		id := s.cfg.Zones[i].ID
+
+		name := strings.TrimSpace(r.FormValue(fmt.Sprintf("zone_%d_name", id)))
+		if name == "" {
+			name = fmt.Sprintf("Zone %d", id)
+		}
+
+		zoneType := r.FormValue(fmt.Sprintf("zone_%d_type", id))
+		switch zoneType {
+		case "drip", "sprinkler", "mist":
+		default:
+			zoneType = "sprinkler"
+		}
+
+		maxMins, _ := strconv.Atoi(r.FormValue(fmt.Sprintf("zone_%d_max", id)))
+		if maxMins <= 0 {
+			maxMins = 30
+		}
+
+		s.cfg.Zones[i].Name = name
+		s.cfg.Zones[i].Type = zoneType
+		s.cfg.Zones[i].MaxSecs = maxMins * 60
+		s.cfg.Zones[i].Enabled = r.FormValue(fmt.Sprintf("zone_%d_enabled", id)) == "1"
+	}
+
+	if err := s.cfg.Save(s.dataDir); err != nil {
+		logger.Errorf(logTag, "save zones: %v", err)
+		http.Error(w, "save failed", http.StatusInternalServerError)
+		return
+	}
+
+	if s.engine != nil {
+		s.engine.SetZones(s.cfg.Zones)
+		s.mqttClient.Connect(s.cfg.MQTT, s.cfg.Zones, s.engine, s.hist)
+	}
+
+	http.Redirect(w, r, "/setup", http.StatusFound)
+}
+
 // handleSetupReset clears zones, schedules and history, then redirects to the wizard.
 func (s *Server) handleSetupReset(w http.ResponseWriter, r *http.Request) {
 	s.cfg.SetupDone = false
@@ -388,6 +440,7 @@ func (s *Server) handleSetupStep2(w http.ResponseWriter, r *http.Request) {
 		s.cfg.Zones[i].Name = name
 		s.cfg.Zones[i].Type = zoneType
 		s.cfg.Zones[i].MaxSecs = maxMins * 60
+		s.cfg.Zones[i].Enabled = r.FormValue(fmt.Sprintf("zone_%d_enabled", id)) == "1"
 	}
 
 	s.initBoardPins(b)
@@ -457,6 +510,28 @@ func (s *Server) handleSetupTest(w http.ResponseWriter, r *http.Request) {
 		fmt.Sprintf(strs["test_activated"], ch))
 }
 
+// hxRedirectPath returns the absolute path to use for an HX-Redirect header.
+// Unlike the standard "Location" header, HX-Redirect is not rewritten by
+// path-prefix reverse proxies (e.g. the OrbitOS AppHub portal serving the app
+// under "/sprinqua"), so a hardcoded "/path" would drop that prefix and send
+// the browser to the portal root instead of back into the app. We recover the
+// prefix from the Referer (the browser's current, prefix-aware URL) by
+// swapping out everything from "/setup" onwards.
+func hxRedirectPath(r *http.Request, path string) string {
+	ref := r.Referer()
+	if ref == "" {
+		return path
+	}
+	u, err := url.Parse(ref)
+	if err != nil {
+		return path
+	}
+	if idx := strings.Index(u.Path, "/setup"); idx >= 0 {
+		return u.Path[:idx] + path
+	}
+	return path
+}
+
 // handleSetupStep3 finalizes the wizard: saves config, initializes engine, redirects to settings.
 func (s *Server) handleSetupStep3(w http.ResponseWriter, r *http.Request) {
 	s.cfg.SetupDone = true
@@ -477,7 +552,7 @@ func (s *Server) handleSetupStep3(w http.ResponseWriter, r *http.Request) {
 		logger.Infof(logTag, "zone engine initialized with %d zones", len(s.cfg.Zones))
 		s.mqttClient.Connect(s.cfg.MQTT, s.cfg.Zones, eng, s.hist)
 	}
-	w.Header().Set("HX-Redirect", "/setup")
+	w.Header().Set("HX-Redirect", hxRedirectPath(r, "/setup"))
 	w.WriteHeader(http.StatusOK)
 }
 

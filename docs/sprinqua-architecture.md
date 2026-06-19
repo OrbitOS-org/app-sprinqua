@@ -1,6 +1,6 @@
 # Sprinqua — Arquitetura e Estado de Implementação
 
-> Atualizado: 2026-06-09
+> Atualizado: 2026-06-15
 
 ---
 
@@ -25,10 +25,12 @@
 | MQTT — config guardada | ✅ Implementado |
 | MQTT — cliente publicação/subscrição HA (active/passive) | ✅ Implementado |
 | Modo Inverno (pausa scheduler, controlo manual disponível) | ✅ Implementado |
+| Smart Watering — ajuste proporcional de duração (Manual / Monthly / Zimmerman / ETo) | ✅ Implementado |
+| Smart Watering — proteção contra geada (frost threshold) | ✅ Implementado |
+| Edição de zonas pós-setup (nome, tipo, duração, enabled) via Settings | ✅ Implementado |
 | Pulse duration configurável | ⬜ Não implementado (UI fixa em 300s; backend já aceita `?secs=`) |
 | Filtros no histórico (por zona, por trigger) | ⬜ Não implementado |
 | Estatísticas — total regado por zona/semana | ⬜ Não implementado |
-| Smart Watering — ajuste proporcional de duração | ⬜ Não implementado |
 
 ---
 
@@ -172,6 +174,7 @@ Ficheiro: `internal/board/registry.go`
 | `GET /dashboard` | dashboard com zonas |
 | `GET /setup` | Settings page |
 | `POST /setup/save` | guarda preferências |
+| `POST /setup/zones` | atualiza nome/tipo/duração/enabled das zonas existentes, sem reset |
 | `POST /setup/reset` | reinicia wizard |
 | `GET /setup/wizard` | wizard step1 |
 | `GET /setup/channels` | fragment HTMX com badges CHX |
@@ -245,13 +248,17 @@ Ficheiro: `internal/history/history.go`
 ### 10.1 Módulo meteorológico — `internal/weather/weather.go`
 
 - API: **Open-Meteo** (gratuito, sem API key)
-- `FetchToday(lat, lon) (*Result, error)` — fetcha `precipitation_sum` diária (previsão hoje), cache 1h
+- `FetchToday(lat, lon) (*Result, error)` — fetcha `precipitation_sum` e `temperature_2m_min` diárias (previsão hoje), cache 1h — usados para o skip por chuva e proteção contra geada
+- `FetchYesterday(lat, lon) (*DailyData, error)` — fetcha `temperature_2m_max/min`, `relative_humidity_2m_mean`, `precipitation_sum` e `et0_fao_evapotranspiration` do dia anterior (`past_days=1`) — usados por Zimmerman e ETo
+- `FetchEToBaseline(lat, lon) (float64, error)` — média diária de `et0_fao_evapotranspiration` dos últimos 12 meses via Archive API
 
 ### 10.2 Módulo de ajuste — `internal/adjustment/adjustment.go`
 
-- `Calc(sw SmartWateringConfig) float64` — devolve multiplicador [0.0–2.5]
+- `Calc(sw SmartWateringConfig, data *weather.DailyData) float64` — devolve multiplicador [0.0–2.5] (1.0 = sem ajuste)
 - `"manual"` → `ManualPct / 100.0`
 - `"monthly"` → `MonthlyPct[mesAtual] / 100.0` (default 100 se slot a zero)
+- `"zimmerman"` → ver §10.6
+- `"eto"` → ver §10.7
 
 ### 10.3 Config — `SmartWateringConfig`
 
@@ -259,65 +266,71 @@ Ficheiro: `internal/history/history.go`
 Enabled         bool
 Lat, Lon        float64
 RainThresholdMM float64     // skip se chuva >= threshold; default 2mm
+FrostThresholdC float64     // skip se temp. mín. prevista < threshold; 0 = desativado
 Method          string      // "" | "manual" | "monthly" | "zimmerman" | "eto"
 ManualPct       float64     // 0–250
 MonthlyPct      [12]float64 // Jan=0 … Dez=11; 0 = default 100
+
+// Zimmerman (°C / mm)
+ZimmBT, ZimmBH, ZimmBP float64 // baseline temp/humidade/precip; defaults 21°C / 30% / 0mm
+ZimmWT, ZimmWH, ZimmWP float64 // pesos 0–100%; default 100
+
+// ETo
+Altitude                float64 // elevação para a Archive API
+EToBaseline             float64 // ETo média diária (mm/dia) dos últimos 12 meses
+EToBaselineCalculatedAt string  // data ISO do último cálculo
 ```
 
 ### 10.4 Integração no scheduler
 
 - Por programa: `Schedule.SmartWatering bool` — opt-in por programa
-- `runSchedule` aplica `adjustment.Calc(sw)` à duração quando `sched.SmartWatering && sw.Method != ""`
+- `runSchedule` aplica `adjustment.Calc(sw, data)` à duração quando `sched.SmartWatering && sw.Method != ""`
 - Duração ajustada = 0 → `hist.Skip()` e abort (mesmo comportamento do skip por chuva)
-- O skip por chuva (limiar) é independente e corre sempre antes do ajuste de duração
+- O skip por chuva (limiar) e o skip por geada (`FrostThresholdC`) são independentes e correm sempre antes do ajuste de duração — registados em histórico como `skip_rain` / `skip_frost`
 
 ### 10.5 Settings UI
 
 - Toggle global + mapa Leaflet/OSM
-- Seletor de método: Skip only / Manual / Monthly *(Zimmerman e ETo em fases futuras)*
+- Seletor de método: Skip only / Manual / Monthly / Zimmerman ET / Reference ETo
 - Manual: campo de percentagem única
 - Monthly: grelha 4×3 com os 12 meses
+- Zimmerman: campos para baseline (temp/humidade/precip) e pesos (T/H/P)
+- ETo: card com baseline atual, data do último cálculo e botão "Recalcular baseline" (`POST /api/eto-baseline/recalculate`)
+- Campo "Skip se temp. mín. <" para proteção contra geada (0 = desativado)
 - Card de status HTMX (`GET /api/weather`)
 
 ---
 
-## 10.6 Fase 2 — Zimmerman (planeada)
+## 10.6 Fase 2 — Zimmerman (implementado)
 
-Heurística empírica: `Watering% = 100 + (T - BT)×4×WT + (30 - BH)×WH - 200×(P - BP)×WP`
+Fórmula métrica implementada (`adjustment.zimmerman`):
 
-Requer fetch de `temperature_2m_max/min`, `relative_humidity_2m_mean`, `precipitation_sum` do **dia anterior** (`past_days=1`). Parâmetros configuráveis: `BT` (°F), `BH` (%), `BP`, pesos `WT/WH/WP` (0–100%).
+`Watering% = 100 + (T - BT)×7.2×WT/100 + (BH - H)×WH/100 - 7.874×(P - BP)×WP/100`
+
+Onde `T`/`P` são a temperatura média e a precipitação de **ontem** (`FetchYesterday`), `H` a humidade relativa média, e `BT`/`BH`/`BP`/`WT`/`WH`/`WP` os parâmetros configuráveis em Settings (defaults: 21°C / 30% / 0mm / 100% / 100% / 100%). Resultado limitado a 0–200%. Devolve 1.0 (sem ajuste) se os dados meteorológicos não estiverem disponíveis.
 
 ---
 
-## 10.7 Fase 3 — ETo / Penman-Monteith (planeada)
+## 10.7 Fase 3 — ETo / Penman-Monteith (implementado)
 
-`Watering% = ((ETo_ontem - Precip_ontem) ÷ ETo_baseline) × 100%`
+`Watering% = max(0, ETo_ontem - Precip_ontem) ÷ ETo_baseline`, limitado a 0–200%.
 
-O Open-Meteo já devolve `et0_fao_evapotranspiration` — não é necessário implementar FAO-56.
+O Open-Meteo devolve `et0_fao_evapotranspiration` diretamente — não foi necessário implementar FAO-56.
 
-**ETo baseline** — média diária anual calculada a partir dos últimos 12 meses via Archive API.
+**ETo baseline** — média diária anual calculada a partir dos últimos 12 meses via Archive API (`FetchEToBaseline`).
 
 **Decisões de implementação:**
 
 | Decisão | Escolha |
 |---|---|
-| Quando calcular baseline | Automaticamente na 1ª vez que o utilizador seleciona ETo como método — goroutine em background |
-| Fallback enquanto sem baseline | Zimmerman temporariamente, com banner de aviso na UI: *"ETo baseline ainda não calculado. A usar Zimmerman temporariamente."* Quando o baseline ficar pronto, o sistema muda para ETo sem intervenção |
-| Onde guardar | Dentro de `smart_watering` em `config.json` |
-| Recálculo manual | Botão "Recalcular baseline" nas definições ETo — útil após mudança de localização |
+| Quando calcular baseline | Automaticamente na 1ª vez que o utilizador seleciona ETo como método — goroutine em background (`etoCalculating` no `Server`) |
+| Fallback enquanto sem baseline | Zimmerman temporariamente (`adjustment.eto` chama `zimmerman` quando `EToBaseline <= 0`) |
+| Onde guardar | Dentro de `smart_watering` em `config.json` (`eto_baseline`, `eto_baseline_calculated_at`) |
+| Recálculo manual | Botão "Recalcular baseline" nas definições ETo (`POST /api/eto-baseline/recalculate`) — útil após mudança de localização |
 
-**Campos novos em `SmartWateringConfig`:**
-```json
-"eto_baseline": 0.112,
-"eto_baseline_calculated_at": "2026-01-15"
-```
-`eto_baseline_calculated_at` permite mostrar no botão "Recalcular" quando foi o último cálculo.
+**Campos no Open-Meteo (dia anterior):** `et0_fao_evapotranspiration`, `precipitation_sum`, `temperature_2m_max/min`, `relative_humidity_2m_mean`
 
-**Campos adicionais necessários no Open-Meteo (dia anterior):**
-`et0_fao_evapotranspiration`, `precipitation_sum`
-
-**Campos adicionais necessários na config:**
-- `Altitude float64` — necessário para a Archive API (parâmetro `elevation`)
+**Campo adicional na config:** `Altitude float64` — usado na Archive API (parâmetro `elevation`)
 
 ---
 

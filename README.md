@@ -11,11 +11,17 @@ Sprinqua runs directly on your Raspberry Pi and exposes a web UI accessible thro
 ## Features
 
 - **Multi-zone control** — manual ON/OFF and timed pulse per zone
-- **Scheduler** — weekly programs with a visual Gantt chart
-- **Smart Watering** — skips scheduled runs automatically when rain exceeds your configured threshold (powered by [Open-Meteo](https://open-meteo.com), no API key required)
+- **Scheduler** — weekly programs with a visual Gantt chart and time picker
+- **Smart Watering** — skip or proportionally adjust watering based on weather, powered by [Open-Meteo](https://open-meteo.com) (no API key required):
+  - **Skip only** — skip a run when forecast rain exceeds your threshold
+  - **Manual / Monthly** — fixed or month-by-month percentage adjustment
+  - **Zimmerman ET** — adapts duration to yesterday's temperature, humidity and rain
+  - **Reference ETo** — FAO-56 evapotranspiration vs. an automatically calculated 12-month baseline
+  - **Frost protection** — skip a run when the forecast minimum temperature drops below your threshold
 - **Exclusive zone mode** — only one relay active at a time (configurable)
+- **Per-zone configuration** — rename zones, change type, max duration and enable/disable, anytime from Settings
 - **MQTT** — publish zone state and receive commands; compatible with Home Assistant auto-discovery
-- **Activation history** — log of every run with a 24-hour timeline chart; skipped entries are marked separately
+- **Activation history** — log of every run with an adaptive 24-hour timeline chart; skipped entries (rain/frost) are marked separately
 - **i18n** — English, Portuguese, Spanish, French, German, Italian
 - **No build step** — UI uses HTMX + Tailwind CSS CDN, rendered server-side with Go templates
 

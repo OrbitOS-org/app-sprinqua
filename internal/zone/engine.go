@@ -246,6 +246,44 @@ func (e *Engine) TestChannel(channel, secs int) error {
 	return nil
 }
 
+// SetZones applies an updated zone configuration list. Zones that became
+// disabled are turned off and dropped; newly enabled zones are added and
+// initialised to OFF; existing zones get their config (name, type, max
+// duration) refreshed in place without affecting their active state.
+func (e *Engine) SetZones(zones []config.Zone) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	want := make(map[int]config.Zone, len(zones))
+	for _, z := range zones {
+		if z.Enabled {
+			want[z.ID] = z
+		}
+	}
+
+	for id := range e.zones {
+		if _, ok := want[id]; !ok {
+			if e.zones[id].active {
+				_ = e.turnOffLocked(id)
+			}
+			delete(e.zones, id)
+		}
+	}
+
+	for id, z := range want {
+		if en, ok := e.zones[id]; ok {
+			en.cfg = z
+			continue
+		}
+		e.zones[id] = &entry{cfg: z}
+		if pin := e.board.PinByChannel(z.Channel); pin != nil {
+			if err := e.relayWrite(pin, false); err != nil {
+				logger.Warnf(logTag, "zone %d init OFF: %v", id, err)
+			}
+		}
+	}
+}
+
 // States returns a sorted snapshot of all zone states.
 func (e *Engine) States() []State {
 	e.mu.Lock()

@@ -459,6 +459,61 @@
       </form>
     </div>
 
+    {{if .SetupDone}}
+    <!-- Zones -->
+    <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">{{.S.settings_zones_title}}</h2>
+    <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 mb-6">
+      <p class="text-xs text-slate-400 mb-4">{{.S.settings_zones_desc}}</p>
+      <form method="POST" action="/setup/zones">
+        <div class="space-y-3 mb-5">
+          {{range $i, $z := .Zones}}
+          <div class="rounded-xl border border-slate-200 p-4 bg-slate-50">
+            <div class="flex items-center justify-between gap-2 mb-3">
+              <span class="text-xs font-mono font-semibold text-white px-2 py-0.5 rounded-md"
+                    style="background-color: {{zoneColor $i}}">CH{{$z.Channel}}</span>
+              <label class="inline-flex items-center gap-2 cursor-pointer flex-shrink-0">
+                <span class="text-xs font-medium text-slate-500">{{$.S.zone_enabled_label}}</span>
+                <input type="checkbox" name="zone_{{$z.ID}}_enabled" value="1" class="sr-only peer"
+                  {{if $z.Enabled}}checked{{end}}>
+                <div class="relative w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-emerald-500
+                  after:content-[''] after:absolute after:top-0.5 after:left-0.5
+                  after:bg-white after:rounded-full after:h-5 after:w-5
+                  after:transition-all peer-checked:after:translate-x-5"></div>
+              </label>
+            </div>
+            <div class="mb-2">
+              <label class="block text-xs font-medium text-slate-500 mb-1">{{$.S.step2_zone_name}}</label>
+              <input type="text" name="zone_{{$z.ID}}_name" value="{{$z.Name}}"
+                class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-xs font-medium text-slate-500 mb-1">{{$.S.step2_zone_type}}</label>
+                <select name="zone_{{$z.ID}}_type"
+                  class="w-full rounded-xl border border-slate-300 px-3 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none">
+                  <option value="drip"{{if eq $z.Type "drip"}} selected{{end}}>{{$.S.type_drip}}</option>
+                  <option value="sprinkler"{{if eq $z.Type "sprinkler"}} selected{{end}}>{{$.S.type_sprinkler}}</option>
+                  <option value="mist"{{if eq $z.Type "mist"}} selected{{end}}>{{$.S.type_mist}}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-500 mb-1">{{$.S.step2_zone_max}}</label>
+                <input type="number" name="zone_{{$z.ID}}_max" value="{{divInt $z.MaxSecs 60}}" min="1" max="240"
+                  inputmode="numeric"
+                  class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+              </div>
+            </div>
+          </div>
+          {{end}}
+        </div>
+        <button type="submit"
+          class="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold py-3 px-4 rounded-xl transition-colors text-sm">
+          {{.S.settings_save}}
+        </button>
+      </form>
+    </div>
+    {{end}}
+
     <!-- Hardware -->
     <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">{{.S.settings_hw_title}}</h2>
     <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6">
@@ -484,6 +539,10 @@
         </button>
       </form>
     </div>
+
+    {{if .Version}}
+    <p class="text-center text-xs text-slate-400 mt-6">Sprinqua v{{.Version}}</p>
+    {{end}}
 
   </main>
 

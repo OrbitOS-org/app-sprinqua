@@ -29,9 +29,18 @@
     <div class="space-y-3 mb-5">
       {{range $i, $z := .Zones}}
       <div class="rounded-xl border border-slate-200 p-4 bg-slate-50">
-        <div class="flex items-center gap-2 mb-3">
+        <div class="flex items-center justify-between gap-2 mb-3">
           <span class="text-xs font-mono font-semibold text-white px-2 py-0.5 rounded-md"
                 style="background-color: {{zoneColor $i}}">CH{{$z.Channel}}</span>
+          <label class="inline-flex items-center gap-2 cursor-pointer flex-shrink-0">
+            <span class="text-xs font-medium text-slate-500">{{$.S.zone_enabled_label}}</span>
+            <input type="checkbox" name="zone_{{$z.ID}}_enabled" value="1" class="sr-only peer"
+              {{if $z.Enabled}}checked{{end}}>
+            <div class="relative w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-emerald-500
+              after:content-[''] after:absolute after:top-0.5 after:left-0.5
+              after:bg-white after:rounded-full after:h-5 after:w-5
+              after:transition-all peer-checked:after:translate-x-5"></div>
+          </label>
         </div>
         <div class="mb-2">
           <label class="block text-xs font-medium text-slate-500 mb-1">{{$.S.step2_zone_name}}</label>

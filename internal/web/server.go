@@ -55,6 +55,7 @@ type basePage struct {
 	Lang       string
 	TimeFormat string // "24h" | "12h"
 	ActiveTab  string // "zones" | "history" | "schedule" | "setup"
+	Version    string
 }
 
 // Server holds all dependencies for the HTTP layer.
@@ -69,6 +70,7 @@ type Server struct {
 	system         *client.SystemManager
 	appHub         *client.AppHubManager
 	mqttClient     *mqtt.Client
+	version        string
 	tmpl           *template.Template
 	testMu     sync.Mutex
 	testCancel context.CancelFunc // non-nil while a relay test is active
@@ -84,6 +86,7 @@ func New(
 	sched *scheduler.Scheduler,
 	hist *history.Store,
 	c *client.Client,
+	version string,
 ) (*Server, error) {
 	tmpl, err := template.New("").Funcs(funcMap).ParseFS(templateFS, "templates/*.html")
 	if err != nil {
@@ -99,6 +102,7 @@ func New(
 		gpio:        c.GpioManager,
 		system:      c.SystemManager,
 		appHub:      c.AppHubManager,
+		version:     version,
 		tmpl:        tmpl,
 	}
 
@@ -150,6 +154,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	// Settings + wizard
 	mux.HandleFunc("GET /setup", s.handleSetup)
 	mux.HandleFunc("POST /setup/save", s.handleSettingsSave)
+	mux.HandleFunc("POST /setup/zones", s.handleZonesSave)
 	mux.HandleFunc("POST /setup/reset", s.handleSetupReset)
 	mux.HandleFunc("GET /setup/wizard", s.handleSetupWizard)
 	mux.HandleFunc("GET /setup/channels", s.handleSetupChannels)
@@ -211,7 +216,7 @@ func (s *Server) page(r *http.Request) basePage {
 	default:
 		tab = "zones"
 	}
-	return basePage{S: i18n.Strings(l), Lang: l, TimeFormat: tf, ActiveTab: tab}
+	return basePage{S: i18n.Strings(l), Lang: l, TimeFormat: tf, ActiveTab: tab, Version: s.version}
 }
 
 // setLangCookie writes the language preference cookie.

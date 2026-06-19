@@ -84,7 +84,7 @@ func main() {
 	logger.Infof(logTag, "scheduler started")
 
 	// Build and start HTTP server.
-	srv, err := web.New(*dataDir, cfg, b, eng, sched, hist, c)
+	srv, err := web.New(*dataDir, cfg, b, eng, sched, hist, c, meta.Version)
 	if err != nil {
 		logger.Fatalf(logTag, "create web server: %v", err)
 		os.Exit(1)

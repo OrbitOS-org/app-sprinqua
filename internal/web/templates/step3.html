@@ -24,6 +24,7 @@
 
   <div class="space-y-3 mb-5">
     {{range $i, $z := .Zones}}
+    {{if $z.Enabled}}
     <div class="rounded-xl border border-slate-200 p-4 bg-slate-50">
       <div class="flex items-center justify-between gap-3">
         <div class="min-w-0">
@@ -45,6 +46,7 @@
       </div>
       <div id="test-result-{{$z.Channel}}" class="mt-2 min-h-[1.25rem]"></div>
     </div>
+    {{end}}
     {{end}}
   </div>
 
