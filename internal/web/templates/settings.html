@@ -12,8 +12,9 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>html { overflow-y: scroll; }</style>
 </head>
-<body class="bg-slate-100 min-h-screen">
+<body class="bg-slate-100 min-h-screen" hx-headers='{"X-Sprinqua-Lang": "{{.Lang}}"}'>
 
   <header class="bg-white border-b border-slate-200 sticky top-0 z-10">
     <div class="max-w-2xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
@@ -26,13 +27,13 @@
           class="text-xs px-2 py-2 rounded-lg transition-colors {{if eq .ActiveTab "zones"}}font-bold text-slate-800{{else}}text-slate-400 hover:text-slate-600{{end}}">
           {{.S.zones_title}}
         </a>
-        <a href="/history"
-          class="text-xs px-2 py-2 rounded-lg transition-colors {{if eq .ActiveTab "history"}}font-bold text-slate-800{{else}}text-slate-400 hover:text-slate-600{{end}}">
-          {{.S.nav_history}}
-        </a>
         <a href="/schedule"
           class="text-xs px-2 py-2 rounded-lg transition-colors {{if eq .ActiveTab "schedule"}}font-bold text-slate-800{{else}}text-slate-400 hover:text-slate-600{{end}}">
           {{.S.nav_schedule}}
+        </a>
+        <a href="/history"
+          class="text-xs px-2 py-2 rounded-lg transition-colors {{if eq .ActiveTab "history"}}font-bold text-slate-800{{else}}text-slate-400 hover:text-slate-600{{end}}">
+          {{.S.nav_history}}
         </a>
         <a href="/setup"
           class="text-xs px-2 py-2 rounded-lg transition-colors {{if eq .ActiveTab "setup"}}font-bold text-slate-800{{else}}text-slate-400 hover:text-slate-600{{end}}">
@@ -95,22 +96,6 @@
             <input type="checkbox" name="winter_mode" value="1" class="sr-only peer"
               {{if .WinterMode}}checked{{end}}>
             <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-sky-500
-              after:content-[''] after:absolute after:top-0.5 after:left-0.5
-              after:bg-white after:rounded-full after:h-5 after:w-5
-              after:transition-all peer-checked:after:translate-x-5"></div>
-          </label>
-        </div>
-
-        <!-- Exclusive zone mode -->
-        <div class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-4 bg-slate-50 mb-4">
-          <div class="pr-4">
-            <p class="text-sm font-medium text-slate-700">{{.S.settings_exclusive_label}}</p>
-            <p class="text-xs text-slate-400 mt-0.5">{{.S.settings_exclusive_desc}}</p>
-          </div>
-          <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
-            <input type="checkbox" name="exclusive_mode" value="1" class="sr-only peer"
-              {{if .ExclusiveMode}}checked{{end}}>
-            <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-emerald-600
               after:content-[''] after:absolute after:top-0.5 after:left-0.5
               after:bg-white after:rounded-full after:h-5 after:w-5
               after:transition-all peer-checked:after:translate-x-5"></div>
@@ -298,7 +283,10 @@
                   {{if eq .SmartWatering.Method "zimmerman"}}checked{{end}}
                   onchange="swMethod('zimmerman')">
                 <div>
-                  <p class="text-sm font-semibold text-slate-800">{{.S.sw_method_zimmerman}}</p>
+                  <p class="text-sm font-semibold text-slate-800">
+                    {{.S.sw_method_zimmerman}}
+                    <span class="ml-1 text-[10px] font-bold uppercase tracking-wide text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">Beta</span>
+                  </p>
                   <p class="text-xs text-slate-400 mt-0.5">{{.S.sw_method_zimmerman_desc}}</p>
                 </div>
               </label>
@@ -308,7 +296,10 @@
                   {{if eq .SmartWatering.Method "eto"}}checked{{end}}
                   onchange="swMethod('eto')">
                 <div>
-                  <p class="text-sm font-semibold text-slate-800">{{.S.sw_method_eto}}</p>
+                  <p class="text-sm font-semibold text-slate-800">
+                    {{.S.sw_method_eto}}
+                    <span class="ml-1 text-[10px] font-bold uppercase tracking-wide text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">Beta</span>
+                  </p>
                   <p class="text-xs text-slate-400 mt-0.5">{{.S.sw_method_eto_desc}}</p>
                 </div>
               </label>

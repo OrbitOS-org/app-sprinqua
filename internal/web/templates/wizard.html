@@ -8,8 +8,9 @@
   <title>Sprinqua — Setup</title>
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>html { overflow-y: scroll; }</style>
 </head>
-<body class="bg-slate-100 min-h-screen flex flex-col items-center justify-center p-4">
+<body class="bg-slate-100 min-h-screen flex flex-col items-center justify-center p-4" hx-headers='{"X-Sprinqua-Lang": "{{.Lang}}"}'>
 
   <div class="w-full max-w-lg">
     <div class="text-center mb-6 relative">
@@ -31,12 +32,38 @@
     </div>
 
     <div id="wizard-content">
-      {{template "step1" .}}
+      {{if .HwOK}}
+        {{template "step1" .}}
+      {{else}}
+        {{template "hw_error" .}}
+      {{end}}
     </div>
   </div>
 
 </body>
 </html>
+{{end}}
+
+{{define "hw_error"}}
+<div class="bg-white rounded-2xl shadow-sm border border-red-200 p-5 sm:p-8">
+  <div class="flex flex-col items-center text-center gap-4">
+    <div class="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center text-2xl">⚠️</div>
+    <div>
+      <h2 class="text-lg font-semibold text-slate-800 mb-1">{{.S.hw_check_title}}</h2>
+      <p class="text-slate-500 text-sm">{{.S.hw_check_body}}</p>
+    </div>
+    <div class="w-full rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-left">
+      <p class="text-xs font-medium text-slate-500 mb-1">{{.S.hw_check_model}}</p>
+      <p class="text-sm font-mono text-slate-700">
+        {{if .HwModel}}{{.HwModel}}{{else}}{{.S.hw_check_unknown}}{{end}}
+      </p>
+    </div>
+    <button disabled
+      class="w-full bg-slate-200 text-slate-400 font-semibold py-3 px-4 rounded-xl text-sm cursor-not-allowed">
+      {{.S.btn_continue}}
+    </button>
+  </div>
+</div>
 {{end}}
 
 {{define "step1"}}

@@ -11,6 +11,7 @@ import (
 	"github.com/OrbitOS-org/sdk-go/v26/logger"
 	"sprinqua/internal/board"
 	"sprinqua/internal/config"
+	"sprinqua/internal/history"
 )
 
 const logTag = "zone"
@@ -61,12 +62,24 @@ type entry struct {
 
 // Engine manages all zones and their relay GPIO state.
 type Engine struct {
-	mu             sync.Mutex
-	gpio           *client.GpioManager
-	board          *board.Board
-	zones          map[int]*entry
-	exclusive      bool // when true, activating a zone turns off all others first
-	OnStateChange  func(zoneID int, on bool)
+	mu            sync.Mutex
+	gpio          *client.GpioManager
+	board         *board.Board
+	zones         map[int]*entry
+	exclusive     bool // when true, activating a zone turns off all others first
+	hist          *history.Store
+	OnStateChange func(zoneID int, on bool)
+}
+
+// SetHistory wires the history store so the engine can close a zone's history
+// entry itself whenever IT decides to turn a zone off — exclusive-mode
+// preemption (TurnOn cutting off the previously active zone) and the safety
+// timer auto-off both happen with no external caller around to do it,
+// otherwise leaving that zone stuck "active" in the history view.
+func (e *Engine) SetHistory(h *history.Store) {
+	e.mu.Lock()
+	e.hist = h
+	e.mu.Unlock()
 }
 
 func New(gpio *client.GpioManager, b *board.Board, zones []config.Zone, exclusive bool) *Engine {
@@ -83,13 +96,6 @@ func New(gpio *client.GpioManager, b *board.Board, zones []config.Zone, exclusiv
 		}
 	}
 	return e
-}
-
-// SetExclusive updates the exclusive mode flag at runtime.
-func (e *Engine) SetExclusive(v bool) {
-	e.mu.Lock()
-	e.exclusive = v
-	e.mu.Unlock()
 }
 
 // Init sets all relay pins as OUTPUT and ensures they start OFF.
@@ -145,6 +151,9 @@ func (e *Engine) turnOffLocked(id int) error {
 	}
 	en.active = false
 	logger.Infof(logTag, "zone %d OFF", id)
+	if e.hist != nil {
+		e.hist.Stop(id)
+	}
 	if e.OnStateChange != nil {
 		cb := e.OnStateChange
 		go cb(id, false)

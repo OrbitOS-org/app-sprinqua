@@ -1,3 +1,24 @@
+{{define "zone_step_row"}}
+<div class="zone-step flex items-center gap-2">
+  <select name="zone_id"
+    class="flex-1 rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-800 bg-white
+           focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none">
+    {{range .Zones}}
+    <option value="{{.ID}}" {{if eq $.ZoneID .ID}}selected{{end}}>{{.Name}}</option>
+    {{end}}
+  </select>
+  <input type="number" name="dur_mins" value="{{.DurMins}}" min="1" max="240" inputmode="numeric"
+    class="w-20 rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-800 bg-white
+           focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+  <button type="button" onclick="moveZoneStep(this, -1)"
+    class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100">▲</button>
+  <button type="button" onclick="moveZoneStep(this, 1)"
+    class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100">▼</button>
+  <button type="button" onclick="removeZoneStep(this)"
+    class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-red-400 hover:bg-red-50">×</button>
+</div>
+{{end}}
+
 {{define "schedule_form"}}
 <!DOCTYPE html>
 <html lang="{{.Lang}}">
@@ -8,8 +29,9 @@
   <meta name="theme-color" content="#ffffff">
   <title>Sprinqua</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>html { overflow-y: scroll; }</style>
 </head>
-<body class="bg-slate-100 min-h-screen">
+<body class="bg-slate-100 min-h-screen" hx-headers='{"X-Sprinqua-Lang": "{{.Lang}}"}'>
 
   <header class="bg-white border-b border-slate-200 sticky top-0 z-10">
     <div class="max-w-2xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
@@ -40,16 +62,35 @@
                    focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
         </div>
 
-        <!-- Zone -->
+        <!-- Zones (sequential steps) -->
         <div class="mb-4">
-          <label class="block text-xs font-medium text-slate-500 mb-1">{{.S.sched_form_zone}}</label>
-          <select name="zone_id"
-            class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white
-                   focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none">
-            {{range .Zones}}
-            <option value="{{.ID}}" {{if eq $.Schedule.ZoneID .ID}}selected{{end}}>{{.Name}}</option>
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-xs font-medium text-slate-500">{{.S.sched_form_zones}}</label>
+            {{if .ZonesError}}
+            <span id="zones-error" class="text-xs font-medium text-red-500">{{.S.sched_zones_error}}</span>
+            {{else}}
+            <span id="zones-error" class="text-xs font-medium text-red-500 hidden">{{.S.sched_zones_error}}</span>
             {{end}}
-          </select>
+          </div>
+
+          <div id="zone-steps" class="space-y-2 mb-2">
+            {{if .Schedule.Zones}}
+            {{range .Schedule.Zones}}
+            {{template "zone_step_row" (dict "Zones" $.Zones "ZoneID" .ZoneID "DurMins" .DurMins)}}
+            {{end}}
+            {{else}}
+            {{template "zone_step_row" (dict "Zones" .Zones "ZoneID" 0 "DurMins" 10)}}
+            {{end}}
+          </div>
+
+          <template id="zone-step-template">
+            {{template "zone_step_row" (dict "Zones" .Zones "ZoneID" 0 "DurMins" 10)}}
+          </template>
+
+          <button type="button" onclick="addZoneStep()"
+            class="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 transition-colors">
+            {{.S.sched_form_add_zone}}
+          </button>
         </div>
 
         <!-- Days -->
@@ -59,7 +100,7 @@
             {{if .DaysError}}
             <span id="days-error" class="text-xs font-medium text-red-500">{{.S.sched_days_error}}</span>
             {{else}}
-            <span id="days-error" class="text-xs font-medium text-red-500 hidden"></span>
+            <span id="days-error" class="text-xs font-medium text-red-500 hidden">{{.S.sched_days_error}}</span>
             {{end}}
           </div>
 
@@ -96,37 +137,24 @@
           </div>
         </div>
 
-        <!-- Time + Duration -->
-        <div class="grid grid-cols-2 gap-3 mb-5">
-          <div>
-            <label class="block text-xs font-medium text-slate-500 mb-1">{{.S.sched_form_time}}</label>
-            <input type="hidden" name="start_time" id="start_time_val" value="{{.Schedule.StartTime}}">
-            <div class="flex items-center w-full rounded-xl border border-slate-300 px-4 py-3 bg-white
-                        focus-within:ring-2 focus-within:ring-emerald-500 focus-within:border-transparent">
-              <input id="tp_hour" type="number" inputmode="numeric"
-                class="w-10 text-sm font-medium text-slate-800 bg-transparent outline-none text-center
-                       [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                oninput="tpSync()">
-              <span class="text-slate-400 font-semibold mx-1 select-none">:</span>
-              <input id="tp_min" type="number" inputmode="numeric" min="0" max="59"
-                class="w-10 text-sm font-medium text-slate-800 bg-transparent outline-none text-center
-                       [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                oninput="tpSync()">
-              <button type="button" id="tp_ampm" onclick="tpToggleAmPm()"
-                class="ml-2 text-xs font-semibold text-emerald-600 bg-emerald-50 rounded-lg px-2 py-1
-                       {{if not .Use12h}}hidden{{end}}">AM</button>
-            </div>
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-slate-500 mb-1">{{.S.sched_form_duration}}</label>
-            <div class="flex items-center gap-2">
-              <input type="number" name="dur_mins"
-                value="{{if gt .Schedule.DurMins 0}}{{.Schedule.DurMins}}{{else}}10{{end}}"
-                min="1" max="240" inputmode="numeric" required
-                class="flex-1 rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white
-                       focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
-              <span class="text-sm text-slate-400 flex-shrink-0">{{.S.sched_form_mins}}</span>
-            </div>
+        <!-- Start time -->
+        <div class="mb-5">
+          <label class="block text-xs font-medium text-slate-500 mb-1">{{.S.sched_form_time}}</label>
+          <input type="hidden" name="start_time" id="start_time_val" value="{{.Schedule.StartTime}}">
+          <div class="flex items-center w-full rounded-xl border border-slate-300 px-4 py-3 bg-white
+                      focus-within:ring-2 focus-within:ring-emerald-500 focus-within:border-transparent">
+            <input id="tp_hour" type="number" inputmode="numeric"
+              class="w-10 text-sm font-medium text-slate-800 bg-transparent outline-none text-center
+                     [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              oninput="tpSync()">
+            <span class="text-slate-400 font-semibold mx-1 select-none">:</span>
+            <input id="tp_min" type="number" inputmode="numeric" min="0" max="59"
+              class="w-10 text-sm font-medium text-slate-800 bg-transparent outline-none text-center
+                     [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              oninput="tpSync()">
+            <button type="button" id="tp_ampm" onclick="tpToggleAmPm()"
+              class="ml-2 text-xs font-semibold text-emerald-600 bg-emerald-50 rounded-lg px-2 py-1
+                     {{if not .Use12h}}hidden{{end}}">AM</button>
           </div>
         </div>
 
@@ -242,13 +270,51 @@
       document.getElementById('days-error').classList.add('hidden');
     }
 
+    function addZoneStep() {
+      const tpl = document.getElementById('zone-step-template');
+      const row = tpl.content.firstElementChild.cloneNode(true);
+      document.getElementById('zone-steps').appendChild(row);
+      document.getElementById('zones-error').classList.add('hidden');
+    }
+
+    function removeZoneStep(btn) {
+      const steps = document.getElementById('zone-steps');
+      if (steps.children.length > 1) {
+        btn.closest('.zone-step').remove();
+      }
+    }
+
+    function moveZoneStep(btn, dir) {
+      const row = btn.closest('.zone-step');
+      const sibling = dir < 0 ? row.previousElementSibling : row.nextElementSibling;
+      if (!sibling) return;
+      if (dir < 0) {
+        row.parentNode.insertBefore(row, sibling);
+      } else {
+        row.parentNode.insertBefore(sibling, row);
+      }
+    }
+
     document.querySelector('form').addEventListener('submit', function(e) {
       const checked = document.querySelectorAll('input[name="days"]:checked').length;
-      if (checked === 0) {
-        e.preventDefault();
-        const err = document.getElementById('days-error');
+      const zoneCount = document.getElementById('zone-steps').children.length;
+      let blocked = false;
+      if (zoneCount === 0) {
+        blocked = true;
+        const err = document.getElementById('zones-error');
         err.classList.remove('hidden');
         err.closest('.mb-4').scrollIntoView({behavior: 'smooth', block: 'center'});
+      }
+      if (checked === 0) {
+        blocked = true;
+        const err = document.getElementById('days-error');
+        err.classList.remove('hidden');
+        if (zoneCount !== 0) {
+          err.closest('.mb-4').scrollIntoView({behavior: 'smooth', block: 'center'});
+        }
+      }
+      if (blocked) {
+        e.preventDefault();
       }
     });
 

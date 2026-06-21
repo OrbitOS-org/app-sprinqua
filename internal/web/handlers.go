@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"net/http"
@@ -59,7 +60,9 @@ func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
 
 type step1Data struct {
 	basePage
-	Boards []*board.Board
+	Boards      []*board.Board
+	HwModel     string // raw model string from Gravity RT
+	HwOK        bool   // true only if a Raspberry Pi was detected
 }
 
 type step2Data struct {
@@ -89,7 +92,6 @@ type settingsData struct {
 	basePage
 	MQTT            config.MQTTConfig
 	TimeFormat      string
-	ExclusiveMode   bool
 	WinterMode      bool
 	SmartWatering   config.SmartWateringConfig
 	EToCalculating  bool
@@ -135,7 +137,6 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		basePage:        s.page(r),
 		MQTT:            s.cfg.MQTT,
 		TimeFormat:      tf,
-		ExclusiveMode:   s.cfg.IsExclusiveMode(),
 		WinterMode:      s.cfg.WinterMode,
 		SmartWatering:   sw,
 		EToCalculating:  etoCalc,
@@ -147,9 +148,20 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// isRaspberryPi reports whether the hardware model string identifies a Raspberry Pi.
+func isRaspberryPi(model string) bool {
+	return strings.Contains(strings.ToLower(model), "raspberry pi")
+}
+
 // handleSetupWizard starts the hardware wizard (step 1).
+// It blocks the wizard if the detected hardware is not a Raspberry Pi.
 func (s *Server) handleSetupWizard(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "wizard", step1Data{basePage: s.page(r), Boards: board.All})
+	s.render(w, "wizard", step1Data{
+		basePage: s.page(r),
+		Boards:   board.All,
+		HwModel:  s.hwModel,
+		HwOK:     isRaspberryPi(s.hwModel),
+	})
 }
 
 // handleSettingsSave persists clock format and MQTT preferences.
@@ -163,12 +175,6 @@ func (s *Server) handleSettingsSave(w http.ResponseWriter, r *http.Request) {
 		tf = "24h"
 	}
 	s.cfg.TimeFormat = tf
-
-	exclusive := r.FormValue("exclusive_mode") == "1"
-	s.cfg.ExclusiveMode = &exclusive
-	if s.engine != nil {
-		s.engine.SetExclusive(exclusive)
-	}
 
 	if r.FormValue("mqtt_enabled") == "1" {
 		port, _ := strconv.Atoi(r.FormValue("mqtt_port"))
@@ -278,7 +284,7 @@ func (s *Server) handleSettingsSave(w http.ResponseWriter, r *http.Request) {
 		s.mqttClient.Connect(s.cfg.MQTT, s.cfg.Zones, s.engine, s.hist)
 	}
 
-	http.Redirect(w, r, "/setup", http.StatusFound)
+	http.Redirect(w, r, "/dashboard", http.StatusFound)
 }
 
 // handleZonesSave updates the existing zones' name, type, max duration and
@@ -326,7 +332,7 @@ func (s *Server) handleZonesSave(w http.ResponseWriter, r *http.Request) {
 		s.mqttClient.Connect(s.cfg.MQTT, s.cfg.Zones, s.engine, s.hist)
 	}
 
-	http.Redirect(w, r, "/setup", http.StatusFound)
+	http.Redirect(w, r, "/dashboard", http.StatusFound)
 }
 
 // handleSetupReset clears zones, schedules and history, then redirects to the wizard.
@@ -545,6 +551,7 @@ func (s *Server) handleSetupStep3(w http.ResponseWriter, r *http.Request) {
 		s.board = b
 		eng := zone.New(s.gpio, b, s.cfg.Zones, s.cfg.IsExclusiveMode())
 		eng.Init()
+		eng.SetHistory(s.hist)
 		s.engine = eng
 		if s.sched != nil {
 			s.sched.SetEngine(eng)
@@ -560,20 +567,17 @@ func (s *Server) handleSetupStep3(w http.ResponseWriter, r *http.Request) {
 
 type dashboardData struct {
 	basePage
-	HWModel    string
 	Zones      []zone.State
 	WinterMode bool
 }
 
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
-	hwModel, _ := s.system.GetHardwareModel()
 	var states []zone.State
 	if s.engine != nil {
 		states = s.engine.States()
 	}
 	s.render(w, "dashboard", dashboardData{
 		basePage:   s.page(r),
-		HWModel:    hwModel,
 		Zones:      states,
 		WinterMode: s.cfg.WinterMode,
 	})
@@ -701,19 +705,29 @@ type chartDay struct {
 
 type schedulePageData struct {
 	basePage
-	Schedules    []scheduleView
-	Chart        []chartDay
-	ZoneLegend   []legendEntry
-	Ruler        [5]string // time labels at 0%, 25%, 50%, 75%, 100% of chart range
-	PassiveMode  bool      // true when MQTT passive mode is active
+	Schedules   []scheduleView
+	Chart       []chartDay
+	ZoneLegend  []legendEntry
+	Ruler       [5]string // time labels at 0%, 25%, 50%, 75%, 100% of chart range
+	PassiveMode bool      // true when MQTT passive mode is active
+	WinterMode  bool      // true when winter mode is pausing the scheduler
+}
+
+type zoneStepView struct {
+	ZoneID  int
+	Name    string
+	DurMins int
+	Color   string // persistent hex color matching the zone
 }
 
 type scheduleView struct {
 	config.Schedule
-	ZoneName    string
-	NextRun     string
-	DisplayTime string
-	Color       string // persistent hex color matching the zone
+	ZoneSteps    []zoneStepView
+	TotalMins    int
+	NextRun      string
+	DisplayTime  string
+	Running      bool // this program is the one currently mid-run
+	OtherRunning bool // a different program is mid-run, so Run now is blocked
 }
 
 type scheduleFormData struct {
@@ -722,6 +736,7 @@ type scheduleFormData struct {
 	Zones                []config.Zone
 	IsNew                bool
 	DaysError            bool
+	ZonesError           bool
 	SmartWateringEnabled bool
 	Use12h               bool
 }
@@ -738,6 +753,8 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 	}
 
 	// Schedule card views.
+	runningID, anyRunning := s.sched.RunningID()
+
 	views := make([]scheduleView, len(s.cfg.Schedules))
 	for i, sc := range s.cfg.Schedules {
 		next := scheduler.NextRunFor(sc)
@@ -749,12 +766,23 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 				nextStr = next.Format("Mon 15:04")
 			}
 		}
+		steps := make([]zoneStepView, len(sc.Zones))
+		for j, z := range sc.Zones {
+			steps[j] = zoneStepView{
+				ZoneID:  z.ZoneID,
+				Name:    zmap[z.ZoneID].Name,
+				DurMins: z.DurMins,
+				Color:   zoneColor[z.ZoneID],
+			}
+		}
 		views[i] = scheduleView{
-			Schedule:    sc,
-			ZoneName:    zmap[sc.ZoneID].Name,
-			NextRun:     nextStr,
-			DisplayTime: formatStartTime(sc.StartTime, use12h),
-			Color:       zoneColor[sc.ZoneID],
+			Schedule:     sc,
+			ZoneSteps:    steps,
+			TotalMins:    sc.TotalMins(),
+			NextRun:      nextStr,
+			DisplayTime:  formatStartTime(sc.StartTime, use12h),
+			Running:      sc.ID == runningID,
+			OtherRunning: anyRunning && sc.ID != runningID,
 		}
 	}
 
@@ -774,35 +802,43 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 
 	cStart, cEnd := 1440, 0
 	for _, sc := range s.cfg.Schedules {
-		if !sc.Enabled || sc.DurMins <= 0 {
+		if !sc.Enabled || sc.TotalMins() <= 0 {
 			continue
 		}
 		t, err := time.Parse("15:04", sc.StartTime)
 		if err != nil {
 			continue
 		}
-		sm := t.Hour()*60 + t.Minute()
-		em := sm + sc.DurMins
-		if sm < cStart {
-			cStart = sm
-		}
-		if em > cEnd {
-			cEnd = em
-		}
-		color := zoneColor[sc.ZoneID]
-		name := zmap[sc.ZoneID].Name
-		if !legendSeen[sc.ZoneID] {
-			legendSeen[sc.ZoneID] = true
-		}
-		rb := rawBar{
-			name: name, color: color,
-			startMin: sm, endMin: em,
-			dispTime: formatStartTime(sc.StartTime, use12h),
-			durMins:  sc.DurMins,
-		}
-		for _, d := range sc.Days {
-			if d >= 0 && d <= 6 {
-				dayRaw[d] = append(dayRaw[d], rb)
+		baseMin := t.Hour()*60 + t.Minute()
+		offset := 0
+		for _, step := range sc.Zones {
+			sm := baseMin + offset
+			em := sm + step.DurMins
+			offset += step.DurMins
+			if step.DurMins <= 0 {
+				continue
+			}
+			if sm < cStart {
+				cStart = sm
+			}
+			if em > cEnd {
+				cEnd = em
+			}
+			color := zoneColor[step.ZoneID]
+			name := zmap[step.ZoneID].Name
+			if !legendSeen[step.ZoneID] {
+				legendSeen[step.ZoneID] = true
+			}
+			rb := rawBar{
+				name: name, color: color,
+				startMin: sm, endMin: em,
+				dispTime: formatStartTime(fmt.Sprintf("%02d:%02d", sm/60, sm%60), use12h),
+				durMins:  step.DurMins,
+			}
+			for _, d := range sc.Days {
+				if d >= 0 && d <= 6 {
+					dayRaw[d] = append(dayRaw[d], rb)
+				}
 			}
 		}
 	}
@@ -912,6 +948,7 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 		ZoneLegend:  legend,
 		Ruler:       ruler,
 		PassiveMode: s.cfg.MQTT.IsPassive(),
+		WinterMode:  s.cfg.WinterMode,
 	}
 }
 
@@ -931,13 +968,33 @@ func (s *Server) handleSchedule(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "schedule", s.buildSchedulePage(r))
 }
 
+// handleScheduleFragment re-renders the self-polling program list so a
+// "Run now" in progress (or one finishing) is reflected without a manual
+// page reload, even after navigating away and back.
+func (s *Server) handleScheduleFragment(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "schedule_list_wrapper", s.buildSchedulePage(r))
+}
+
+// enabledZones returns only the zones available for picking in a program —
+// disabled zones can't be turned on, so they shouldn't be selectable here.
+func enabledZones(zones []config.Zone) []config.Zone {
+	out := make([]config.Zone, 0, len(zones))
+	for _, z := range zones {
+		if z.Enabled {
+			out = append(out, z)
+		}
+	}
+	return out
+}
+
 func (s *Server) handleScheduleNew(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "schedule_form", scheduleFormData{
 		basePage:             s.page(r),
 		Schedule:             config.Schedule{Enabled: true, StartTime: "08:00"},
-		Zones:                s.cfg.Zones,
+		Zones:                enabledZones(s.cfg.Zones),
 		IsNew:                true,
 		DaysError:            r.URL.Query().Get("err") == "days",
+		ZonesError:           r.URL.Query().Get("err") == "zones",
 		SmartWateringEnabled: s.cfg.SmartWatering.Enabled,
 		Use12h:               s.cfg.TimeFormat == "12h",
 	})
@@ -954,9 +1011,10 @@ func (s *Server) handleScheduleEdit(w http.ResponseWriter, r *http.Request) {
 			s.render(w, "schedule_form", scheduleFormData{
 				basePage:             s.page(r),
 				Schedule:             sc,
-				Zones:                s.cfg.Zones,
+				Zones:                enabledZones(s.cfg.Zones),
 				IsNew:                false,
 				DaysError:            r.URL.Query().Get("err") == "days",
+				ZonesError:           r.URL.Query().Get("err") == "zones",
 				SmartWateringEnabled: s.cfg.SmartWatering.Enabled,
 				Use12h:               s.cfg.TimeFormat == "12h",
 			})
@@ -968,6 +1026,10 @@ func (s *Server) handleScheduleEdit(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleScheduleCreate(w http.ResponseWriter, r *http.Request) {
 	sc := s.parseScheduleForm(r)
+	if len(sc.Zones) == 0 {
+		http.Redirect(w, r, "/schedule/new?err=zones", http.StatusFound)
+		return
+	}
 	if len(sc.Days) == 0 {
 		http.Redirect(w, r, "/schedule/new?err=days", http.StatusFound)
 		return
@@ -987,6 +1049,10 @@ func (s *Server) handleScheduleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sc := s.parseScheduleForm(r)
+	if len(sc.Zones) == 0 {
+		http.Redirect(w, r, fmt.Sprintf("/schedule/%d/edit?err=zones", id), http.StatusFound)
+		return
+	}
 	if len(sc.Days) == 0 {
 		http.Redirect(w, r, fmt.Sprintf("/schedule/%d/edit?err=days", id), http.StatusFound)
 		return
@@ -1002,6 +1068,42 @@ func (s *Server) handleScheduleUpdate(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf(logTag, "save schedule: %v", err)
 	}
 	http.Redirect(w, r, "/schedule", http.StatusFound)
+}
+
+// handleScheduleRun starts a program's zone sequence immediately, ignoring
+// its enabled flag, days, start time and Smart Watering adjustment. Refuses
+// with 409 if the program is already mid-run (clock-triggered or manual).
+func (s *Server) handleScheduleRun(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.Atoi(r.PathValue("id"))
+	switch err := s.sched.RunNow(id); {
+	case err == nil:
+		// Render the full wrapper so the polling timer resets to t=0,
+		// giving 3 clean seconds before any poll can race with this response.
+		s.render(w, "schedule_list_wrapper", s.buildSchedulePage(r))
+	case errors.Is(err, scheduler.ErrScheduleRunning):
+		w.WriteHeader(http.StatusConflict)
+	case errors.Is(err, scheduler.ErrScheduleNotFound):
+		http.NotFound(w, r)
+	default:
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}
+}
+
+// handleScheduleStop cancels a program's in-progress run: the zone it
+// currently has on is turned off immediately and remaining zones in its
+// sequence are skipped.
+func (s *Server) handleScheduleStop(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.Atoi(r.PathValue("id"))
+	switch err := s.sched.StopRun(id); {
+	case err == nil:
+		// Render the full wrapper so the polling timer resets to t=0,
+		// giving 3 clean seconds before any poll can race with this response.
+		s.render(w, "schedule_list_wrapper", s.buildSchedulePage(r))
+	case errors.Is(err, scheduler.ErrScheduleNotRunning):
+		w.WriteHeader(http.StatusConflict)
+	default:
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 }
 
 func (s *Server) handleScheduleToggle(w http.ResponseWriter, r *http.Request) {
@@ -1238,6 +1340,9 @@ func (s *Server) handleHistory(w http.ResponseWriter, r *http.Request) {
 	// Pass 2: build bars clipped to the adaptive window.
 	chartRows := make([]historyChartRow, 0, len(s.cfg.Zones))
 	for _, z := range s.cfg.Zones {
+		if !z.Enabled {
+			continue
+		}
 		idx := zoneIdx[z.ID]
 		color := zoneColors[idx%len(zoneColors)]
 		var bars []historyChartBar
@@ -1347,7 +1452,23 @@ func (s *Server) parseScheduleForm(r *http.Request) config.Schedule {
 	if err := r.ParseForm(); err != nil {
 		return config.Schedule{}
 	}
-	zoneID, _ := strconv.Atoi(r.FormValue("zone_id"))
+	zoneIDs := r.Form["zone_id"]
+	durs := r.Form["dur_mins"]
+	var zones []config.ProgramZone
+	for i, zs := range zoneIDs {
+		zoneID, err := strconv.Atoi(zs)
+		if err != nil || zoneID <= 0 {
+			continue
+		}
+		dur := 0
+		if i < len(durs) {
+			dur, _ = strconv.Atoi(durs[i])
+		}
+		if dur <= 0 {
+			dur = 10
+		}
+		zones = append(zones, config.ProgramZone{ZoneID: zoneID, DurMins: dur})
+	}
 	var days []int
 	for _, d := range r.Form["days"] {
 		if n, err := strconv.Atoi(d); err == nil && n >= 0 && n <= 6 {
@@ -1358,16 +1479,11 @@ func (s *Server) parseScheduleForm(r *http.Request) config.Schedule {
 	if startTime == "" {
 		startTime = "08:00"
 	}
-	durMins, _ := strconv.Atoi(r.FormValue("dur_mins"))
-	if durMins <= 0 {
-		durMins = 10
-	}
 	return config.Schedule{
 		Name:          r.FormValue("name"),
-		ZoneID:        zoneID,
+		Zones:         zones,
 		Days:          days,
 		StartTime:     startTime,
-		DurMins:       durMins,
 		Enabled:       r.FormValue("enabled") == "1",
 		SmartWatering: r.FormValue("smart_watering") == "1",
 	}

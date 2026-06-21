@@ -14,27 +14,75 @@ type Config struct {
 	Zones         []Zone     `json:"zones"`
 	MQTT          MQTTConfig `json:"mqtt"`
 	Schedules     []Schedule `json:"schedules"`
-	TimeFormat    string     `json:"time_format"`    // "24h" | "12h"
-	ExclusiveMode  *bool               `json:"exclusive_mode,omitempty"` // nil = default true
-	SmartWatering  SmartWateringConfig `json:"smart_watering,omitempty"`
-	WinterMode     bool                `json:"winter_mode,omitempty"`
+	TimeFormat    string     `json:"time_format"` // "24h" | "12h"
+	SmartWatering SmartWateringConfig `json:"smart_watering,omitempty"`
+	WinterMode    bool                `json:"winter_mode,omitempty"`
 }
 
-// IsExclusiveMode returns true when at most one zone may be active at a time.
-// Defaults to true for new installs (nil field).
+// IsExclusiveMode reports whether at most one zone may be active at a time.
+// Always true — no longer user-configurable, since running more than one
+// zone at once isn't a supported/sane setup for this hardware.
 func (c *Config) IsExclusiveMode() bool {
-	return c.ExclusiveMode == nil || *c.ExclusiveMode
+	return true
 }
 
 type Schedule struct {
-	ID           int    `json:"id"`
-	Name         string `json:"name,omitempty"`
-	ZoneID       int    `json:"zone_id"`
-	Days         []int  `json:"days"`       // 0=Sun … 6=Sat (Go time.Weekday)
-	StartTime    string `json:"start_time"` // "HH:MM"
-	DurMins      int    `json:"dur_mins"`
-	Enabled      bool   `json:"enabled"`
-	SmartWatering bool  `json:"smart_watering,omitempty"`
+	ID            int           `json:"id"`
+	Name          string        `json:"name,omitempty"`
+	Zones         []ProgramZone `json:"zones"`
+	Days          []int         `json:"days"`       // 0=Sun … 6=Sat (Go time.Weekday)
+	StartTime     string        `json:"start_time"` // "HH:MM"
+	Enabled       bool          `json:"enabled"`
+	SmartWatering bool          `json:"smart_watering,omitempty"`
+}
+
+// ProgramZone is one step in a multi-zone program: a zone and how long it
+// runs for, in the order zones are listed within the Schedule.
+type ProgramZone struct {
+	ZoneID  int `json:"zone_id"`
+	DurMins int `json:"dur_mins"`
+}
+
+// TotalMins returns the combined duration of every zone step in the program.
+func (s Schedule) TotalMins() int {
+	total := 0
+	for _, z := range s.Zones {
+		total += z.DurMins
+	}
+	return total
+}
+
+// UnmarshalJSON upgrades legacy single-zone schedules (top-level "zone_id" +
+// "dur_mins") to the current []ProgramZone shape so old config.json files
+// keep loading after the multi-zone program change.
+func (s *Schedule) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		ID            int           `json:"id"`
+		Name          string        `json:"name,omitempty"`
+		Zones         []ProgramZone `json:"zones"`
+		ZoneID        int           `json:"zone_id"`
+		DurMins       int           `json:"dur_mins"`
+		Days          []int         `json:"days"`
+		StartTime     string        `json:"start_time"`
+		Enabled       bool          `json:"enabled"`
+		SmartWatering bool          `json:"smart_watering,omitempty"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	*s = Schedule{
+		ID:            raw.ID,
+		Name:          raw.Name,
+		Zones:         raw.Zones,
+		Days:          raw.Days,
+		StartTime:     raw.StartTime,
+		Enabled:       raw.Enabled,
+		SmartWatering: raw.SmartWatering,
+	}
+	if len(s.Zones) == 0 && raw.ZoneID != 0 {
+		s.Zones = []ProgramZone{{ZoneID: raw.ZoneID, DurMins: raw.DurMins}}
+	}
+	return nil
 }
 
 func (c *Config) NextScheduleID() int {

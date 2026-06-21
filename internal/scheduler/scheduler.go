@@ -1,6 +1,8 @@
 package scheduler
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"math"
 	"sync"
@@ -16,14 +18,31 @@ import (
 
 const logTag = "scheduler"
 
+var (
+	// ErrScheduleNotFound is returned by RunNow when no schedule has the given ID.
+	ErrScheduleNotFound = errors.New("schedule not found")
+	// ErrScheduleRunning is returned by RunNow when some program — this one or
+	// any other — is already mid-run. Only one program may run at a time,
+	// since they share the same relay hardware and history records.
+	ErrScheduleRunning = errors.New("a program is already running")
+	// ErrEngineNotReady is returned by RunNow before hardware setup is complete.
+	ErrEngineNotReady = errors.New("engine not ready")
+	// ErrScheduleNotRunning is returned by StopRun when this program isn't
+	// the one currently mid-run.
+	ErrScheduleNotRunning = errors.New("schedule not running")
+)
+
 type Scheduler struct {
-	mu      sync.Mutex
-	cfg     *config.Config
-	engine  *zone.Engine
-	hist    *history.Store
-	lastRun map[int]time.Time
-	stopCh  chan struct{}
-	paused  bool
+	mu        sync.Mutex
+	cfg       *config.Config
+	engine    *zone.Engine
+	hist      *history.Store
+	lastRun   map[int]time.Time
+	runningID int                // ID of the schedule currently mid-run, or 0 if none
+	cancel    context.CancelFunc // cancels the current run; nil if none is running
+	done      chan struct{}      // closed when the current run's goroutine finishes
+	stopCh    chan struct{}
+	paused    bool
 }
 
 func New(cfg *config.Config, eng *zone.Engine) *Scheduler {
@@ -33,6 +52,118 @@ func New(cfg *config.Config, eng *zone.Engine) *Scheduler {
 		lastRun: make(map[int]time.Time),
 		stopCh:  make(chan struct{}),
 	}
+}
+
+// IsRunning reports whether the given schedule is the one currently mid-run,
+// so the UI can reflect this across page reloads/navigation.
+func (s *Scheduler) IsRunning(id int) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.runningID == id
+}
+
+// RunningID returns the ID of the program currently mid-run, if any. Only one
+// program can run at a time, so the UI can grey out "Run now" on every other
+// program while this one is active.
+func (s *Scheduler) RunningID() (id int, ok bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.runningID, s.runningID != 0
+}
+
+// StopRun cancels the in-progress run, but only if it's this schedule: the
+// zone it currently has on is turned off immediately and any remaining zones
+// in its sequence are skipped. It waits (briefly, with a safety timeout) for
+// the run's goroutine to actually finish turning the zone off before
+// returning, so callers that immediately re-render the UI see the final
+// "stopped" state right away instead of a stale "still running" flash that
+// only self-corrects on the next poll. Returns ErrScheduleNotRunning if this
+// program isn't the one currently mid-run. Not to be confused with Stop(),
+// which shuts down the scheduler loop entirely.
+func (s *Scheduler) StopRun(id int) error {
+	s.mu.Lock()
+	if s.runningID != id || s.cancel == nil {
+		s.mu.Unlock()
+		return ErrScheduleNotRunning
+	}
+	cancel := s.cancel
+	done := s.done
+	s.mu.Unlock()
+
+	cancel()
+	if done != nil {
+		select {
+		case <-done:
+		case <-time.After(2 * time.Second):
+			logger.Warnf(logTag, "schedule %d: StopRun timed out waiting for run to finish", id)
+		}
+	}
+	return nil
+}
+
+// startRun records id as the (sole) running schedule and returns a context
+// that's canceled when StopRun(id) is called. Caller must hold s.mu.
+func (s *Scheduler) startRun(id int) context.Context {
+	ctx, cancel := context.WithCancel(context.Background())
+	s.runningID = id
+	s.cancel = cancel
+	s.done = make(chan struct{})
+	return ctx
+}
+
+func (s *Scheduler) finishRun(id int) {
+	s.mu.Lock()
+	if s.runningID == id {
+		s.runningID = 0
+		s.cancel = nil
+		if s.done != nil {
+			close(s.done)
+			s.done = nil
+		}
+	}
+	s.mu.Unlock()
+}
+
+// RunNow starts a program's zone sequence immediately, ignoring its enabled
+// flag, days, start time, and any Smart Watering adjustment — each zone runs
+// for exactly its configured duration. Intended for a manual "Run now" /
+// "Play" action so the user can test a program without waiting for its
+// scheduled time. Returns ErrScheduleRunning if any program (this one or a
+// different one) is already mid-run — only one program runs at a time.
+func (s *Scheduler) RunNow(id int) error {
+	s.mu.Lock()
+	if s.engine == nil {
+		s.mu.Unlock()
+		return ErrEngineNotReady
+	}
+	if s.runningID != 0 {
+		s.mu.Unlock()
+		return ErrScheduleRunning
+	}
+	var sched config.Schedule
+	found := false
+	for _, sc := range s.cfg.Schedules {
+		if sc.ID == id {
+			sched = sc
+			found = true
+			break
+		}
+	}
+	if !found {
+		s.mu.Unlock()
+		return ErrScheduleNotFound
+	}
+	ctx := s.startRun(id)
+	eng := s.engine
+	hist := s.hist
+	s.mu.Unlock()
+
+	logger.Infof(logTag, "schedule %d: manual run-now", sched.ID)
+	go func() {
+		defer s.finishRun(sched.ID)
+		runZoneSteps(ctx, eng, sched, hist, 1.0, history.Manual)
+	}()
+	return nil
 }
 
 func (s *Scheduler) SetEngine(eng *zone.Engine) {
@@ -95,7 +226,7 @@ func (s *Scheduler) tick(now time.Time) {
 	}
 
 	for _, sched := range s.cfg.Schedules {
-		if !sched.Enabled || sched.DurMins <= 0 {
+		if !sched.Enabled || sched.TotalMins() <= 0 {
 			continue
 		}
 		if !dayInList(sched.Days, weekday) {
@@ -107,15 +238,22 @@ func (s *Scheduler) tick(now time.Time) {
 		if last, ok := s.lastRun[sched.ID]; ok && !last.Before(minute) {
 			continue
 		}
+		if s.runningID != 0 {
+			continue // some program (clock-triggered or manual) is already mid-run
+		}
 		s.lastRun[sched.ID] = minute
+		ctx := s.startRun(sched.ID)
 		eng := s.engine
 		hist := s.hist
 		sw := s.cfg.SmartWatering
-		go runSchedule(eng, sched, hist, sw)
+		go func(sc config.Schedule) {
+			defer s.finishRun(sc.ID)
+			runSchedule(ctx, eng, sc, hist, sw)
+		}(sched)
 	}
 }
 
-func runSchedule(eng *zone.Engine, sched config.Schedule, hist *history.Store, sw config.SmartWateringConfig) {
+func runSchedule(ctx context.Context, eng *zone.Engine, sched config.Schedule, hist *history.Store, sw config.SmartWateringConfig) {
 	if sw.Enabled && sw.Lat != 0 {
 		res, err := weather.FetchToday(sw.Lat, sw.Lon)
 		if err != nil {
@@ -123,22 +261,18 @@ func runSchedule(eng *zone.Engine, sched config.Schedule, hist *history.Store, s
 		} else {
 			if res.RainMM >= sw.EffectiveThreshold() {
 				logger.Infof(logTag, "schedule %d skipped: rain %.1fmm >= %.1fmm", sched.ID, res.RainMM, sw.EffectiveThreshold())
-				if hist != nil {
-					hist.Skip(sched.ZoneID, history.SkipRain)
-				}
+				skipAll(hist, sched, history.SkipRain)
 				return
 			}
 			if sw.FrostThresholdC > 0 && res.TempMinC < sw.FrostThresholdC {
 				logger.Infof(logTag, "schedule %d skipped: min temp %.1f°C < %.1f°C", sched.ID, res.TempMinC, sw.FrostThresholdC)
-				if hist != nil {
-					hist.Skip(sched.ZoneID, history.SkipFrost)
-				}
+				skipAll(hist, sched, history.SkipFrost)
 				return
 			}
 		}
 	}
 
-	dur := sched.DurMins
+	mult := 1.0
 	if sched.SmartWatering && sw.Enabled && sw.Method != "" {
 		var dailyData *weather.DailyData
 		if sw.Method == "zimmerman" || sw.Method == "eto" {
@@ -148,39 +282,72 @@ func runSchedule(eng *zone.Engine, sched config.Schedule, hist *history.Store, s
 				dailyData = d
 			}
 		}
-		mult := adjustment.Calc(sw, dailyData)
-		dur = int(math.Round(float64(dur) * mult))
-		logger.Infof(logTag, "schedule %d: adjustment method=%s mult=%.2f → %dmin", sched.ID, sw.Method, mult, dur)
-		if dur <= 0 {
-			logger.Infof(logTag, "schedule %d: adjusted duration=0, skipping", sched.ID)
-			if hist != nil {
-				hist.Skip(sched.ZoneID, history.Schedule)
-			}
-			return
-		}
+		mult = adjustment.Calc(sw, dailyData)
+		logger.Infof(logTag, "schedule %d: adjustment method=%s mult=%.2f", sched.ID, sw.Method, mult)
 	}
 
-	logger.Infof(logTag, "schedule %d zone %d ON for %dmin", sched.ID, sched.ZoneID, dur)
-	if err := eng.TurnOn(sched.ZoneID); err != nil {
-		logger.Warnf(logTag, "schedule %d zone %d ON: %v", sched.ID, sched.ZoneID, err)
-		return
-	}
-	if hist != nil {
-		hist.Start(sched.ZoneID, history.Schedule)
-	}
-	time.Sleep(time.Duration(dur) * time.Minute)
-	if err := eng.TurnOff(sched.ZoneID); err != nil {
-		logger.Warnf(logTag, "schedule %d zone %d OFF: %v", sched.ID, sched.ZoneID, err)
-	}
-	if hist != nil {
-		hist.Stop(sched.ZoneID)
+	runZoneSteps(ctx, eng, sched, hist, mult, history.Schedule)
+}
+
+// runZoneSteps turns each zone in the program on/off in sequence, applying
+// the given duration multiplier and recording history under trigger. If ctx
+// is canceled (StopRun) while a zone is active, that zone is turned off
+// immediately and any remaining zones in the sequence are skipped.
+func runZoneSteps(ctx context.Context, eng *zone.Engine, sched config.Schedule, hist *history.Store, mult float64, trigger history.Trigger) {
+	for _, step := range sched.Zones {
+		if ctx.Err() != nil {
+			logger.Infof(logTag, "schedule %d: stopped, skipping remaining zones", sched.ID)
+			return
+		}
+		dur := int(math.Round(float64(step.DurMins) * mult))
+		if dur <= 0 {
+			logger.Infof(logTag, "schedule %d zone %d: adjusted duration=0, skipping", sched.ID, step.ZoneID)
+			if hist != nil {
+				hist.Skip(step.ZoneID, trigger)
+			}
+			continue
+		}
+		logger.Infof(logTag, "schedule %d zone %d ON for %dmin", sched.ID, step.ZoneID, dur)
+		if err := eng.TurnOn(step.ZoneID); err != nil {
+			logger.Warnf(logTag, "schedule %d zone %d ON: %v", sched.ID, step.ZoneID, err)
+			continue
+		}
+		if hist != nil {
+			hist.Start(step.ZoneID, trigger)
+		}
+		stopped := false
+		select {
+		case <-time.After(time.Duration(dur) * time.Minute):
+		case <-ctx.Done():
+			stopped = true
+		}
+		if err := eng.TurnOff(step.ZoneID); err != nil {
+			logger.Warnf(logTag, "schedule %d zone %d OFF: %v", sched.ID, step.ZoneID, err)
+		}
+		if hist != nil {
+			hist.Stop(step.ZoneID)
+		}
+		if stopped {
+			logger.Infof(logTag, "schedule %d: stopped during zone %d, skipping remaining zones", sched.ID, step.ZoneID)
+			return
+		}
 	}
 	logger.Infof(logTag, "schedule %d complete", sched.ID)
 }
 
+// skipAll records a weather-driven skip for every zone in the program.
+func skipAll(hist *history.Store, sched config.Schedule, trigger history.Trigger) {
+	if hist == nil {
+		return
+	}
+	for _, step := range sched.Zones {
+		hist.Skip(step.ZoneID, trigger)
+	}
+}
+
 // NextRunFor returns the next scheduled run time for the given schedule.
 func NextRunFor(sched config.Schedule) *time.Time {
-	if !sched.Enabled || sched.DurMins <= 0 || len(sched.Days) == 0 {
+	if !sched.Enabled || sched.TotalMins() <= 0 || len(sched.Days) == 0 {
 		return nil
 	}
 	now := time.Now()

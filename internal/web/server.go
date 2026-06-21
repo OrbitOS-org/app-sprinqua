@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"embed"
+	"fmt"
 	"html/template"
 	"net/http"
 	"strings"
@@ -47,6 +48,22 @@ var funcMap = template.FuncMap{
 	"zoneColor": func(idx int) string {
 		return zoneColors[idx%len(zoneColors)]
 	},
+	// dict builds a map from alternating key/value arguments, for passing
+	// multiple values into a named sub-template.
+	"dict": func(values ...any) (map[string]any, error) {
+		if len(values)%2 != 0 {
+			return nil, fmt.Errorf("dict: odd number of arguments")
+		}
+		m := make(map[string]any, len(values)/2)
+		for i := 0; i < len(values); i += 2 {
+			key, ok := values[i].(string)
+			if !ok {
+				return nil, fmt.Errorf("dict: key %d is not a string", i)
+			}
+			m[key] = values[i+1]
+		}
+		return m, nil
+	},
 }
 
 // basePage is embedded in every template data struct to provide S (strings), Lang, and TimeFormat.
@@ -67,13 +84,13 @@ type Server struct {
 	sched          *scheduler.Scheduler
 	hist           *history.Store
 	gpio           *client.GpioManager
-	system         *client.SystemManager
 	appHub         *client.AppHubManager
 	mqttClient     *mqtt.Client
+	hwModel        string // hardware model string from Gravity RT, used to verify Raspberry Pi
 	version        string
 	tmpl           *template.Template
-	testMu     sync.Mutex
-	testCancel context.CancelFunc // non-nil while a relay test is active
+	testMu         sync.Mutex
+	testCancel     context.CancelFunc // non-nil while a relay test is active
 	etoMu          sync.Mutex
 	etoCalculating bool
 }
@@ -86,6 +103,7 @@ func New(
 	sched *scheduler.Scheduler,
 	hist *history.Store,
 	c *client.Client,
+	hwModel string,
 	version string,
 ) (*Server, error) {
 	tmpl, err := template.New("").Funcs(funcMap).ParseFS(templateFS, "templates/*.html")
@@ -100,8 +118,8 @@ func New(
 		sched:       sched,
 		hist:        hist,
 		gpio:        c.GpioManager,
-		system:      c.SystemManager,
 		appHub:      c.AppHubManager,
+		hwModel:     hwModel,
 		version:     version,
 		tmpl:        tmpl,
 	}
@@ -180,17 +198,33 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /history", s.handleHistory)
 
 	// Schedule
+	mux.HandleFunc("GET /api/schedule/fragment", s.handleScheduleFragment)
 	mux.HandleFunc("GET /schedule", s.handleSchedule)
 	mux.HandleFunc("GET /schedule/new", s.handleScheduleNew)
 	mux.HandleFunc("POST /schedule", s.handleScheduleCreate)
 	mux.HandleFunc("GET /schedule/{id}/edit", s.handleScheduleEdit)
 	mux.HandleFunc("POST /schedule/{id}", s.handleScheduleUpdate)
+	mux.HandleFunc("POST /schedule/{id}/run", s.handleScheduleRun)
+	mux.HandleFunc("POST /schedule/{id}/stop", s.handleScheduleStop)
 	mux.HandleFunc("POST /schedule/{id}/toggle", s.handleScheduleToggle)
 	mux.HandleFunc("POST /schedule/{id}/delete", s.handleScheduleDelete)
 }
 
-// lang detects the active language for a request.
+// lang detects the active language for a request. The app is embedded as an
+// iframe under the AppHub portal, so htmx-issued requests (polling, toggles,
+// run/stop, etc.) are cross-site from the browser's point of view — the
+// sprinqua_lang cookie doesn't reliably travel on those, only on the initial
+// top-level page navigation. Every htmx request carries the already-resolved
+// language via the X-Sprinqua-Lang header instead (set on <body> via
+// hx-headers), which takes priority over the cookie for exactly that reason.
 func (s *Server) lang(r *http.Request) string {
+	if h := r.Header.Get("X-Sprinqua-Lang"); h != "" {
+		for _, sup := range i18n.Supported() {
+			if h == sup {
+				return h
+			}
+		}
+	}
 	var cookie string
 	if c, err := r.Cookie("sprinqua_lang"); err == nil {
 		cookie = c.Value

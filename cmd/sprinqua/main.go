@@ -74,6 +74,7 @@ func main() {
 		}
 		eng = zone.New(c.GpioManager, b, cfg.Zones, cfg.IsExclusiveMode())
 		eng.Init()
+		eng.SetHistory(hist)
 		sched.SetEngine(eng)
 		logger.Infof(logTag, "zone engine ready (%d zones, board: %s)", len(cfg.Zones), b.Name)
 	} else {
@@ -84,7 +85,7 @@ func main() {
 	logger.Infof(logTag, "scheduler started")
 
 	// Build and start HTTP server.
-	srv, err := web.New(*dataDir, cfg, b, eng, sched, hist, c, meta.Version)
+	srv, err := web.New(*dataDir, cfg, b, eng, sched, hist, c, hwModel, meta.Version)
 	if err != nil {
 		logger.Fatalf(logTag, "create web server: %v", err)
 		os.Exit(1)
