@@ -89,16 +89,20 @@
         <!-- Winter Mode -->
         <div class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-4 bg-slate-50 mb-4">
           <div class="pr-4">
-            <p class="text-sm font-medium text-slate-700">{{.S.winter_mode_label}}</p>
-            <p class="text-xs text-slate-400 mt-0.5">{{.S.winter_mode_desc}}</p>
+            <p class="text-sm font-medium {{if .PassiveMode}}text-slate-400{{else}}text-slate-700{{end}}">{{.S.winter_mode_label}}</p>
+            <p class="text-xs mt-0.5 {{if .PassiveMode}}text-amber-500{{else}}text-slate-400{{end}}">
+              {{if .PassiveMode}}{{.S.winter_mode_managed_by_ha}}{{else}}{{.S.winter_mode_desc}}{{end}}
+            </p>
           </div>
-          <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+          <label class="relative inline-flex items-center {{if .PassiveMode}}cursor-not-allowed{{else}}cursor-pointer{{end}} flex-shrink-0">
             <input type="checkbox" name="winter_mode" value="1" class="sr-only peer"
-              {{if .WinterMode}}checked{{end}}>
+              {{if .WinterMode}}checked{{end}}
+              {{if .PassiveMode}}disabled{{end}}>
             <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-sky-500
               after:content-[''] after:absolute after:top-0.5 after:left-0.5
               after:bg-white after:rounded-full after:h-5 after:w-5
-              after:transition-all peer-checked:after:translate-x-5"></div>
+              after:transition-all peer-checked:after:translate-x-5
+              {{if .PassiveMode}}opacity-40{{end}}"></div>
           </label>
         </div>
 
@@ -152,6 +156,20 @@
                 class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
             </div>
           </div>
+
+          <!-- Connection status -->
+          {{if .MQTTConnected}}
+          <div class="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0"></span>
+            <span class="text-xs font-semibold text-emerald-700">{{.S.mqtt_status_connected}}</span>
+            <span class="text-xs text-emerald-600">· {{.MQTT.Broker}}:{{if .MQTT.Port}}{{.MQTT.Port}}{{else}}1883{{end}}</span>
+          </div>
+          {{else}}
+          <div class="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-50 border border-red-200">
+            <span class="w-2 h-2 rounded-full bg-red-400 flex-shrink-0"></span>
+            <span class="text-xs font-semibold text-red-600">{{.S.mqtt_status_disconnected}}</span>
+          </div>
+          {{end}}
 
           <!-- Control mode -->
           <div>
@@ -220,226 +238,334 @@
                 class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
             </div>
           </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-xs font-medium text-slate-500 mb-1">{{.S.smart_watering_threshold}}</label>
-              <div class="flex items-center gap-2">
-                <input type="number" name="sw_threshold" value="{{.SmartWatering.RainThresholdMM}}" step="0.5" min="0.5"
-                  inputmode="decimal"
-                  class="flex-1 rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
-                <span class="text-sm text-slate-400 flex-shrink-0">mm</span>
+          <!-- Skip Protection card -->
+          <div id="sw-skip-card" class="rounded-xl border-2 transition-colors
+            {{if .SmartWatering.SkipEnabled}}border-emerald-400 bg-emerald-50{{else}}border-slate-200 bg-white{{end}}">
+            <div class="flex items-center justify-between px-4 py-3">
+              <div class="pr-4">
+                <p class="text-sm font-semibold text-slate-800">☔ {{.S.sw_skip_label}}</p>
+                <p class="text-xs text-slate-400 mt-0.5">{{.S.sw_skip_desc}}</p>
               </div>
+              <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                <input type="checkbox" name="sw_skip_enabled" value="1" class="sr-only peer"
+                  {{if .SmartWatering.SkipEnabled}}checked{{end}}
+                  onchange="swSkipToggle(this.checked)">
+                <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-emerald-600
+                  after:content-[''] after:absolute after:top-0.5 after:left-0.5
+                  after:bg-white after:rounded-full after:h-5 after:w-5
+                  after:transition-all peer-checked:after:translate-x-5"></div>
+              </label>
             </div>
-            <div>
-              <label class="block text-xs font-medium text-slate-500 mb-1">{{.S.sw_frost_threshold}}</label>
-              <div class="flex items-center gap-2">
-                <input type="number" name="sw_frost_threshold"
-                  value="{{.SmartWatering.FrostThresholdC}}"
-                  step="0.5" inputmode="decimal" placeholder="0"
-                  class="flex-1 rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
-                <span class="text-sm text-slate-400 flex-shrink-0">°C</span>
+            <div id="sw-skip-fields" class="px-4 pb-4 {{if not .SmartWatering.SkipEnabled}}hidden{{end}}">
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-medium text-slate-500 mb-1">{{.S.smart_watering_threshold}}</label>
+                  <div class="flex items-center gap-2">
+                    <input type="number" name="sw_threshold" value="{{.SmartWatering.RainThresholdMM}}" step="0.5" min="0.5"
+                      inputmode="decimal"
+                      class="flex-1 rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                    <span class="text-sm text-slate-400 flex-shrink-0">mm</span>
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-500 mb-1">{{.S.sw_frost_threshold}}</label>
+                  <div class="flex items-center gap-2">
+                    <input type="number" name="sw_frost_threshold"
+                      value="{{.SmartWatering.FrostThresholdC}}"
+                      step="0.5" inputmode="decimal" placeholder="0"
+                      class="flex-1 rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                    <span class="text-sm text-slate-400 flex-shrink-0">°C</span>
+                  </div>
+                </div>
               </div>
+              <p class="text-xs text-slate-400 mt-2">{{.S.sw_frost_hint}}</p>
             </div>
           </div>
-          <p class="text-xs text-slate-400 -mt-1">{{.S.sw_frost_hint}}</p>
 
-          <!-- Adjustment method -->
+          <!-- Adjustment method — each card expands inline when selected -->
           <div>
             <p class="text-xs font-medium text-slate-500 mb-2">{{.S.sw_method_label}}</p>
             <div class="space-y-2">
-              <label class="flex items-start gap-3 rounded-xl border-2 px-4 py-3 cursor-pointer transition-colors
+
+              <!-- No adjustment (default) -->
+              <div id="sw-method-none" class="rounded-xl border-2 transition-colors
+                {{if eq .SmartWatering.Method ""}}border-emerald-400 bg-emerald-50{{else}}border-slate-200 bg-white hover:border-slate-300{{end}}">
+                <label class="flex items-start gap-3 px-4 py-3 cursor-pointer">
+                  <input type="radio" name="sw_method" value="" class="mt-0.5 accent-emerald-600"
+                    {{if eq .SmartWatering.Method ""}}checked{{end}}
+                    onchange="swMethod('')">
+                  <div>
+                    <p class="text-sm font-semibold text-slate-800">{{.S.sw_method_none}}</p>
+                    <p class="text-xs text-slate-400 mt-0.5">{{.S.sw_method_none_desc}}</p>
+                  </div>
+                </label>
+              </div>
+
+              <!-- Manual -->
+              <div id="sw-method-manual" class="rounded-xl border-2 transition-colors
                 {{if eq .SmartWatering.Method "manual"}}border-emerald-400 bg-emerald-50{{else}}border-slate-200 bg-white hover:border-slate-300{{end}}">
-                <input type="radio" name="sw_method" value="manual" class="mt-0.5 accent-emerald-600"
-                  {{if eq .SmartWatering.Method "manual"}}checked{{end}}
-                  onchange="swMethod('manual')">
-                <div>
-                  <p class="text-sm font-semibold text-slate-800">{{.S.sw_method_manual}}</p>
-                  <p class="text-xs text-slate-400 mt-0.5">{{.S.sw_method_manual_desc}}</p>
+                <label class="flex items-start gap-3 px-4 py-3 cursor-pointer">
+                  <input type="radio" name="sw_method" value="manual" class="mt-0.5 accent-emerald-600"
+                    {{if eq .SmartWatering.Method "manual"}}checked{{end}}
+                    onchange="swMethod('manual')">
+                  <div>
+                    <p class="text-sm font-semibold text-slate-800">{{.S.sw_method_manual}}</p>
+                    <p class="text-xs text-slate-400 mt-0.5">{{.S.sw_method_manual_desc}}</p>
+                  </div>
+                </label>
+                <div id="sw-manual-fields" class="px-4 pb-4 {{if ne .SmartWatering.Method "manual"}}hidden{{end}}">
+                  <label class="block text-xs font-medium text-slate-500 mb-1">{{.S.sw_manual_pct}}</label>
+                  <div class="flex items-center gap-2">
+                    <input type="number" name="sw_manual_pct"
+                      value="{{if gt .SmartWatering.ManualPct 0.0}}{{printf "%.0f" .SmartWatering.ManualPct}}{{else}}100{{end}}"
+                      min="0" max="250" inputmode="numeric"
+                      {{if ne .SmartWatering.Method "manual"}}disabled{{end}}
+                      class="flex-1 rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                    <span class="text-sm text-slate-400 flex-shrink-0">%</span>
+                  </div>
                 </div>
-              </label>
-              <label class="flex items-start gap-3 rounded-xl border-2 px-4 py-3 cursor-pointer transition-colors
+              </div>
+
+              <!-- Monthly -->
+              <div id="sw-method-monthly" class="rounded-xl border-2 transition-colors
                 {{if eq .SmartWatering.Method "monthly"}}border-emerald-400 bg-emerald-50{{else}}border-slate-200 bg-white hover:border-slate-300{{end}}">
-                <input type="radio" name="sw_method" value="monthly" class="mt-0.5 accent-emerald-600"
-                  {{if eq .SmartWatering.Method "monthly"}}checked{{end}}
-                  onchange="swMethod('monthly')">
-                <div>
-                  <p class="text-sm font-semibold text-slate-800">{{.S.sw_method_monthly}}</p>
-                  <p class="text-xs text-slate-400 mt-0.5">{{.S.sw_method_monthly_desc}}</p>
+                <label class="flex items-start gap-3 px-4 py-3 cursor-pointer">
+                  <input type="radio" name="sw_method" value="monthly" class="mt-0.5 accent-emerald-600"
+                    {{if eq .SmartWatering.Method "monthly"}}checked{{end}}
+                    onchange="swMethod('monthly')">
+                  <div>
+                    <p class="text-sm font-semibold text-slate-800">{{.S.sw_method_monthly}}</p>
+                    <p class="text-xs text-slate-400 mt-0.5">{{.S.sw_method_monthly_desc}}</p>
+                  </div>
+                </label>
+                <div id="sw-monthly-fields" class="px-4 pb-4 {{if ne .SmartWatering.Method "monthly"}}hidden{{end}}">
+                  <p class="text-xs font-medium text-slate-500 mb-2">{{.S.sw_monthly_title}}</p>
+                  <div class="grid grid-cols-4 gap-2">
+                    {{range $v := (slice 0 1 2 3 4 5 6 7 8 9 10 11)}}
+                    <div>
+                      <label class="block text-xs text-slate-400 mb-1 text-center">{{index $.S (printf "sw_month_%d" $v)}}</label>
+                      <input type="number" name="sw_monthly_{{$v}}"
+                        value="{{printf "%.0f" ($.SmartWatering.EffectiveMonthlyPct $v)}}"
+                        min="0" max="250" inputmode="numeric"
+                        {{if ne $.SmartWatering.Method "monthly"}}disabled{{end}}
+                        class="w-full rounded-lg border border-slate-300 px-2 py-2 text-sm text-center text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                    </div>
+                    {{end}}
+                  </div>
+                  <p class="text-xs text-slate-400 mt-2">{{.S.sw_monthly_hint}}</p>
                 </div>
-              </label>
-              <label class="flex items-start gap-3 rounded-xl border-2 px-4 py-3 cursor-pointer transition-colors
-                {{if eq .SmartWatering.Method ""}}border-slate-300 bg-slate-50{{else}}border-slate-200 bg-white hover:border-slate-300{{end}}">
-                <input type="radio" name="sw_method" value="" class="mt-0.5 accent-slate-500"
-                  {{if eq .SmartWatering.Method ""}}checked{{end}}
-                  onchange="swMethod('')">
-                <div>
-                  <p class="text-sm font-semibold text-slate-600">{{.S.sw_method_none}}</p>
-                  <p class="text-xs text-slate-400 mt-0.5">{{.S.sw_method_none_desc}}</p>
-                </div>
-              </label>
-              <label class="flex items-start gap-3 rounded-xl border-2 px-4 py-3 cursor-pointer transition-colors
+              </div>
+
+              <!-- Zimmermann ET -->
+              <div id="sw-method-zimmerman" class="rounded-xl border-2 transition-colors
                 {{if eq .SmartWatering.Method "zimmerman"}}border-emerald-400 bg-emerald-50{{else}}border-slate-200 bg-white hover:border-slate-300{{end}}">
-                <input type="radio" name="sw_method" value="zimmerman" class="mt-0.5 accent-emerald-600"
-                  {{if eq .SmartWatering.Method "zimmerman"}}checked{{end}}
-                  onchange="swMethod('zimmerman')">
-                <div>
-                  <p class="text-sm font-semibold text-slate-800">
-                    {{.S.sw_method_zimmerman}}
-                    <span class="ml-1 text-[10px] font-bold uppercase tracking-wide text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">Beta</span>
-                  </p>
-                  <p class="text-xs text-slate-400 mt-0.5">{{.S.sw_method_zimmerman_desc}}</p>
+                <label class="flex items-start gap-3 px-4 py-3 cursor-pointer">
+                  <input type="radio" name="sw_method" value="zimmerman" class="mt-0.5 accent-emerald-600"
+                    {{if eq .SmartWatering.Method "zimmerman"}}checked{{end}}
+                    onchange="swMethod('zimmerman')">
+                  <div>
+                    <p class="text-sm font-semibold text-slate-800">
+                      {{.S.sw_method_zimmerman}}
+                      <span class="ml-1 text-[10px] font-bold uppercase tracking-wide text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">Beta</span>
+                    </p>
+                    <p class="text-xs text-slate-400 mt-0.5">{{.S.sw_method_zimmerman_desc}}</p>
+                  </div>
+                </label>
+                <div id="sw-zimm-fields" class="px-4 pb-4 space-y-3 {{if ne .SmartWatering.Method "zimmerman"}}hidden{{end}}">
+                  <div class="rounded-xl border border-slate-200 p-3 bg-white">
+                    <p class="text-xs font-medium text-slate-500 mb-2">{{.S.sw_zimm_baselines_label}}</p>
+                    <div class="grid grid-cols-3 gap-2">
+                      <div>
+                        <label class="block text-xs text-slate-400 mb-1">{{.S.sw_zimm_bt}}</label>
+                        <input type="number" name="zimm_bt"
+                          value="{{printf "%.0f" .SmartWatering.EffectiveZimmBT}}"
+                          step="1" inputmode="numeric"
+                          {{if ne .SmartWatering.Method "zimmerman"}}disabled{{end}}
+                          class="w-full rounded-lg border border-slate-300 px-2 py-2 text-sm text-center text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                      </div>
+                      <div>
+                        <label class="block text-xs text-slate-400 mb-1">{{.S.sw_zimm_bh}}</label>
+                        <input type="number" name="zimm_bh"
+                          value="{{printf "%.0f" .SmartWatering.EffectiveZimmBH}}"
+                          step="1" min="0" max="100" inputmode="numeric"
+                          {{if ne .SmartWatering.Method "zimmerman"}}disabled{{end}}
+                          class="w-full rounded-lg border border-slate-300 px-2 py-2 text-sm text-center text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                      </div>
+                      <div>
+                        <label class="block text-xs text-slate-400 mb-1">{{.S.sw_zimm_bp}}</label>
+                        <input type="number" name="zimm_bp"
+                          value="{{printf "%.1f" .SmartWatering.ZimmBP}}"
+                          step="0.5" min="0" inputmode="decimal"
+                          {{if ne .SmartWatering.Method "zimmerman"}}disabled{{end}}
+                          class="w-full rounded-lg border border-slate-300 px-2 py-2 text-sm text-center text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="rounded-xl border border-slate-200 p-3 bg-white">
+                    <p class="text-xs font-medium text-slate-500 mb-2">{{.S.sw_zimm_weights_label}}</p>
+                    <div class="grid grid-cols-3 gap-2">
+                      <div>
+                        <label class="block text-xs text-slate-400 mb-1">{{.S.sw_zimm_wt}}</label>
+                        <input type="number" name="zimm_wt"
+                          value="{{printf "%.0f" .SmartWatering.EffectiveZimmWT}}"
+                          step="1" min="0" max="200" inputmode="numeric"
+                          {{if ne .SmartWatering.Method "zimmerman"}}disabled{{end}}
+                          class="w-full rounded-lg border border-slate-300 px-2 py-2 text-sm text-center text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                      </div>
+                      <div>
+                        <label class="block text-xs text-slate-400 mb-1">{{.S.sw_zimm_wh}}</label>
+                        <input type="number" name="zimm_wh"
+                          value="{{printf "%.0f" .SmartWatering.EffectiveZimmWH}}"
+                          step="1" min="0" max="200" inputmode="numeric"
+                          {{if ne .SmartWatering.Method "zimmerman"}}disabled{{end}}
+                          class="w-full rounded-lg border border-slate-300 px-2 py-2 text-sm text-center text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                      </div>
+                      <div>
+                        <label class="block text-xs text-slate-400 mb-1">{{.S.sw_zimm_wp}}</label>
+                        <input type="number" name="zimm_wp"
+                          value="{{printf "%.0f" .SmartWatering.EffectiveZimmWP}}"
+                          step="1" min="0" max="200" inputmode="numeric"
+                          {{if ne .SmartWatering.Method "zimmerman"}}disabled{{end}}
+                          class="w-full rounded-lg border border-slate-300 px-2 py-2 text-sm text-center text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </label>
-              <label class="flex items-start gap-3 rounded-xl border-2 px-4 py-3 cursor-pointer transition-colors
+              </div>
+
+              <!-- Reference ETo -->
+              <div id="sw-method-eto" class="rounded-xl border-2 transition-colors
                 {{if eq .SmartWatering.Method "eto"}}border-emerald-400 bg-emerald-50{{else}}border-slate-200 bg-white hover:border-slate-300{{end}}">
-                <input type="radio" name="sw_method" value="eto" class="mt-0.5 accent-emerald-600"
-                  {{if eq .SmartWatering.Method "eto"}}checked{{end}}
-                  onchange="swMethod('eto')">
-                <div>
-                  <p class="text-sm font-semibold text-slate-800">
-                    {{.S.sw_method_eto}}
-                    <span class="ml-1 text-[10px] font-bold uppercase tracking-wide text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">Beta</span>
-                  </p>
-                  <p class="text-xs text-slate-400 mt-0.5">{{.S.sw_method_eto_desc}}</p>
-                </div>
-              </label>
-            </div>
-          </div>
+                <label class="flex items-start gap-3 px-4 py-3 cursor-pointer">
+                  <input type="radio" name="sw_method" value="eto" class="mt-0.5 accent-emerald-600"
+                    {{if eq .SmartWatering.Method "eto"}}checked{{end}}
+                    onchange="swMethod('eto')">
+                  <div>
+                    <p class="text-sm font-semibold text-slate-800">
+                      {{.S.sw_method_eto}}
+                      <span class="ml-1 text-[10px] font-bold uppercase tracking-wide text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">Beta</span>
+                    </p>
+                    <p class="text-xs text-slate-400 mt-0.5">{{.S.sw_method_eto_desc}}</p>
+                  </div>
+                </label>
+                <div id="sw-eto-fields" class="px-4 pb-4 space-y-3 {{if ne .SmartWatering.Method "eto"}}hidden{{end}}">
+                  <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">{{.S.sw_eto_altitude}}</label>
+                    <div class="flex items-center gap-2">
+                      <input type="number" name="sw_altitude"
+                        value="{{printf "%.0f" .SmartWatering.Altitude}}"
+                        step="1" min="0" inputmode="numeric"
+                        {{if ne .SmartWatering.Method "eto"}}disabled{{end}}
+                        class="flex-1 rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                      <span class="text-sm text-slate-400 flex-shrink-0">m</span>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-1">{{.S.sw_eto_location_hint}}</p>
+                  </div>
 
-          <!-- Manual percentage -->
-          <div id="sw-manual-fields" class="{{if ne .SmartWatering.Method "manual"}}hidden{{end}}">
-            <label class="block text-xs font-medium text-slate-500 mb-1">{{.S.sw_manual_pct}}</label>
-            <div class="flex items-center gap-2">
-              <input type="number" name="sw_manual_pct"
-                value="{{if gt .SmartWatering.ManualPct 0.0}}{{printf "%.0f" .SmartWatering.ManualPct}}{{else}}100{{end}}"
-                min="0" max="250" inputmode="numeric"
-                class="flex-1 rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
-              <span class="text-sm text-slate-400 flex-shrink-0">%</span>
-            </div>
-          </div>
+                  <!-- ETo baseline status card -->
+                  <div class="rounded-xl border border-slate-200 p-4 bg-white">
+                    {{if .EToCalculating}}
+                    <div class="flex items-center gap-3">
+                      <div class="w-2 h-2 rounded-full bg-amber-400 animate-pulse flex-shrink-0"></div>
+                      <p class="text-sm text-slate-700">{{.S.sw_eto_baseline_calculating}}</p>
+                    </div>
+                    {{else if gt .SmartWatering.EToBaseline 0.0}}
+                    <div class="flex items-start justify-between gap-3">
+                      <div>
+                        <p class="text-xs text-slate-500 mb-0.5">{{.S.sw_eto_baseline_done}}</p>
+                        <p class="text-lg font-bold text-emerald-700">{{printf "%.3f" .SmartWatering.EToBaseline}} mm/day</p>
+                        {{if .SmartWatering.EToBaselineCalculatedAt}}
+                        <p class="text-xs text-slate-400 mt-0.5">{{.SmartWatering.EToBaselineCalculatedAt}}</p>
+                        {{end}}
+                      </div>
+                      <form method="POST" action="/api/eto-baseline/recalculate">
+                        <button type="submit"
+                          class="text-xs text-slate-500 hover:text-slate-700 border border-slate-300 rounded-lg px-3 py-1.5 transition-colors">
+                          {{.S.sw_eto_recalculate}}
+                        </button>
+                      </form>
+                    </div>
+                    {{else}}
+                    <div class="flex items-start justify-between gap-3">
+                      <div>
+                        <p class="text-xs text-slate-500 mb-0.5">{{.S.sw_eto_baseline_none}}</p>
+                        <p class="text-xs text-slate-400 mt-1">{{.S.sw_eto_location_hint}}</p>
+                      </div>
+                    </div>
+                    {{end}}
+                  </div>
 
-          <!-- Monthly percentages -->
-          <div id="sw-monthly-fields" class="{{if ne .SmartWatering.Method "monthly"}}hidden{{end}}">
-            <p class="text-xs font-medium text-slate-500 mb-2">{{.S.sw_monthly_title}}</p>
-            <div class="grid grid-cols-4 gap-2">
-              {{range $v := (slice 0 1 2 3 4 5 6 7 8 9 10 11)}}
-              <div>
-                <label class="block text-xs text-slate-400 mb-1 text-center">{{index $.S (printf "sw_month_%d" $v)}}</label>
-                <div class="flex items-center gap-1">
-                  <input type="number" name="sw_monthly_{{$v}}"
-                    value="{{printf "%.0f" ($.SmartWatering.EffectiveMonthlyPct $v)}}"
-                    min="0" max="250" inputmode="numeric"
-                    class="w-full rounded-lg border border-slate-300 px-2 py-2 text-sm text-center text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                  <!-- Zimmermann fallback params (used before ETo baseline is ready) -->
+                  <details class="rounded-xl border border-slate-200 bg-white">
+                    <summary class="px-4 py-3 text-xs font-medium text-slate-500 cursor-pointer select-none list-none flex items-center justify-between">
+                      <span>{{.S.sw_zimm_fallback_label}}</span>
+                      <span class="text-slate-300 text-sm">›</span>
+                    </summary>
+                    <div class="px-4 pb-4 space-y-3">
+                      <div class="rounded-lg border border-slate-200 p-3 bg-slate-50">
+                        <p class="text-xs font-medium text-slate-500 mb-2">{{.S.sw_zimm_baselines_label}}</p>
+                        <div class="grid grid-cols-3 gap-2">
+                          <div>
+                            <label class="block text-xs text-slate-400 mb-1">{{.S.sw_zimm_bt}}</label>
+                            <input type="number" name="zimm_bt"
+                              value="{{printf "%.0f" .SmartWatering.EffectiveZimmBT}}"
+                              step="1" inputmode="numeric"
+                              {{if ne .SmartWatering.Method "eto"}}disabled{{end}}
+                              class="w-full rounded-lg border border-slate-300 px-2 py-2 text-sm text-center text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                          </div>
+                          <div>
+                            <label class="block text-xs text-slate-400 mb-1">{{.S.sw_zimm_bh}}</label>
+                            <input type="number" name="zimm_bh"
+                              value="{{printf "%.0f" .SmartWatering.EffectiveZimmBH}}"
+                              step="1" min="0" max="100" inputmode="numeric"
+                              {{if ne .SmartWatering.Method "eto"}}disabled{{end}}
+                              class="w-full rounded-lg border border-slate-300 px-2 py-2 text-sm text-center text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                          </div>
+                          <div>
+                            <label class="block text-xs text-slate-400 mb-1">{{.S.sw_zimm_bp}}</label>
+                            <input type="number" name="zimm_bp"
+                              value="{{printf "%.1f" .SmartWatering.ZimmBP}}"
+                              step="0.5" min="0" inputmode="decimal"
+                              {{if ne .SmartWatering.Method "eto"}}disabled{{end}}
+                              class="w-full rounded-lg border border-slate-300 px-2 py-2 text-sm text-center text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                          </div>
+                        </div>
+                      </div>
+                      <div class="rounded-lg border border-slate-200 p-3 bg-slate-50">
+                        <p class="text-xs font-medium text-slate-500 mb-2">{{.S.sw_zimm_weights_label}}</p>
+                        <div class="grid grid-cols-3 gap-2">
+                          <div>
+                            <label class="block text-xs text-slate-400 mb-1">{{.S.sw_zimm_wt}}</label>
+                            <input type="number" name="zimm_wt"
+                              value="{{printf "%.0f" .SmartWatering.EffectiveZimmWT}}"
+                              step="1" min="0" max="200" inputmode="numeric"
+                              {{if ne .SmartWatering.Method "eto"}}disabled{{end}}
+                              class="w-full rounded-lg border border-slate-300 px-2 py-2 text-sm text-center text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                          </div>
+                          <div>
+                            <label class="block text-xs text-slate-400 mb-1">{{.S.sw_zimm_wh}}</label>
+                            <input type="number" name="zimm_wh"
+                              value="{{printf "%.0f" .SmartWatering.EffectiveZimmWH}}"
+                              step="1" min="0" max="200" inputmode="numeric"
+                              {{if ne .SmartWatering.Method "eto"}}disabled{{end}}
+                              class="w-full rounded-lg border border-slate-300 px-2 py-2 text-sm text-center text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                          </div>
+                          <div>
+                            <label class="block text-xs text-slate-400 mb-1">{{.S.sw_zimm_wp}}</label>
+                            <input type="number" name="zimm_wp"
+                              value="{{printf "%.0f" .SmartWatering.EffectiveZimmWP}}"
+                              step="1" min="0" max="200" inputmode="numeric"
+                              {{if ne .SmartWatering.Method "eto"}}disabled{{end}}
+                              class="w-full rounded-lg border border-slate-300 px-2 py-2 text-sm text-center text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </details>
                 </div>
               </div>
-              {{end}}
-            </div>
-            <p class="text-xs text-slate-400 mt-2">{{.S.sw_monthly_hint}}</p>
-          </div>
 
-          <!-- Zimmerman parameters (also shown as fallback when method is ETo) -->
-          <div id="sw-zimm-fields" class="{{if and (ne .SmartWatering.Method "zimmerman") (ne .SmartWatering.Method "eto")}}hidden{{end}} space-y-3">
-            <div class="rounded-xl border border-slate-200 p-3 bg-slate-50">
-              <p class="text-xs font-medium text-slate-500 mb-2">{{.S.sw_zimm_baselines_label}}</p>
-              <div class="grid grid-cols-3 gap-2">
-                <div>
-                  <label class="block text-xs text-slate-400 mb-1">{{.S.sw_zimm_bt}}</label>
-                  <input type="number" name="zimm_bt"
-                    value="{{printf "%.0f" .SmartWatering.EffectiveZimmBT}}"
-                    step="1" inputmode="numeric"
-                    class="w-full rounded-lg border border-slate-300 px-2 py-2 text-sm text-center text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
-                </div>
-                <div>
-                  <label class="block text-xs text-slate-400 mb-1">{{.S.sw_zimm_bh}}</label>
-                  <input type="number" name="zimm_bh"
-                    value="{{printf "%.0f" .SmartWatering.EffectiveZimmBH}}"
-                    step="1" min="0" max="100" inputmode="numeric"
-                    class="w-full rounded-lg border border-slate-300 px-2 py-2 text-sm text-center text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
-                </div>
-                <div>
-                  <label class="block text-xs text-slate-400 mb-1">{{.S.sw_zimm_bp}}</label>
-                  <input type="number" name="zimm_bp"
-                    value="{{printf "%.1f" .SmartWatering.ZimmBP}}"
-                    step="0.5" min="0" inputmode="decimal"
-                    class="w-full rounded-lg border border-slate-300 px-2 py-2 text-sm text-center text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
-                </div>
-              </div>
             </div>
-            <div class="rounded-xl border border-slate-200 p-3 bg-slate-50">
-              <p class="text-xs font-medium text-slate-500 mb-2">{{.S.sw_zimm_weights_label}}</p>
-              <div class="grid grid-cols-3 gap-2">
-                <div>
-                  <label class="block text-xs text-slate-400 mb-1">{{.S.sw_zimm_wt}}</label>
-                  <input type="number" name="zimm_wt"
-                    value="{{printf "%.0f" .SmartWatering.EffectiveZimmWT}}"
-                    step="1" min="0" max="200" inputmode="numeric"
-                    class="w-full rounded-lg border border-slate-300 px-2 py-2 text-sm text-center text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
-                </div>
-                <div>
-                  <label class="block text-xs text-slate-400 mb-1">{{.S.sw_zimm_wh}}</label>
-                  <input type="number" name="zimm_wh"
-                    value="{{printf "%.0f" .SmartWatering.EffectiveZimmWH}}"
-                    step="1" min="0" max="200" inputmode="numeric"
-                    class="w-full rounded-lg border border-slate-300 px-2 py-2 text-sm text-center text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
-                </div>
-                <div>
-                  <label class="block text-xs text-slate-400 mb-1">{{.S.sw_zimm_wp}}</label>
-                  <input type="number" name="zimm_wp"
-                    value="{{printf "%.0f" .SmartWatering.EffectiveZimmWP}}"
-                    step="1" min="0" max="200" inputmode="numeric"
-                    class="w-full rounded-lg border border-slate-300 px-2 py-2 text-sm text-center text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- ETo parameters -->
-          <div id="sw-eto-fields" class="{{if ne .SmartWatering.Method "eto"}}hidden{{end}} space-y-3">
-            <div>
-              <label class="block text-xs font-medium text-slate-500 mb-1">{{.S.sw_eto_altitude}}</label>
-              <div class="flex items-center gap-2">
-                <input type="number" name="sw_altitude"
-                  value="{{printf "%.0f" .SmartWatering.Altitude}}"
-                  step="1" min="0" inputmode="numeric"
-                  class="flex-1 rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
-                <span class="text-sm text-slate-400 flex-shrink-0">m</span>
-              </div>
-              <p class="text-xs text-slate-400 mt-1">{{.S.sw_eto_location_hint}}</p>
-            </div>
-
-            <!-- ETo baseline status card -->
-            <div class="rounded-xl border border-slate-200 p-4 bg-slate-50">
-              {{if .EToCalculating}}
-              <div class="flex items-center gap-3">
-                <div class="w-2 h-2 rounded-full bg-amber-400 animate-pulse flex-shrink-0"></div>
-                <p class="text-sm text-slate-700">{{.S.sw_eto_baseline_calculating}}</p>
-              </div>
-              {{else if gt .SmartWatering.EToBaseline 0.0}}
-              <div class="flex items-start justify-between gap-3">
-                <div>
-                  <p class="text-xs text-slate-500 mb-0.5">{{.S.sw_eto_baseline_done}}</p>
-                  <p class="text-lg font-bold text-emerald-700">{{printf "%.3f" .SmartWatering.EToBaseline}} mm/day</p>
-                  {{if .SmartWatering.EToBaselineCalculatedAt}}
-                  <p class="text-xs text-slate-400 mt-0.5">{{.SmartWatering.EToBaselineCalculatedAt}}</p>
-                  {{end}}
-                </div>
-                <form method="POST" action="/api/eto-baseline/recalculate">
-                  <button type="submit"
-                    class="text-xs text-slate-500 hover:text-slate-700 border border-slate-300 rounded-lg px-3 py-1.5 transition-colors">
-                    {{.S.sw_eto_recalculate}}
-                  </button>
-                </form>
-              </div>
-              {{else}}
-              <div class="flex items-start justify-between gap-3">
-                <div>
-                  <p class="text-xs text-slate-500 mb-0.5">{{.S.sw_eto_baseline_none}}</p>
-                  <p class="text-xs text-slate-400 mt-1">{{.S.sw_eto_location_hint}}</p>
-                </div>
-              </div>
-              {{end}}
-            </div>
-
           </div>
         </div>
 
@@ -579,12 +705,42 @@
     }
   }
 
+  function swSkipToggle(checked) {
+    document.getElementById('sw-skip-fields').classList.toggle('hidden', !checked);
+    var card = document.getElementById('sw-skip-card');
+    card.classList.toggle('border-emerald-400', checked);
+    card.classList.toggle('bg-emerald-50', checked);
+    card.classList.toggle('border-slate-200', !checked);
+  }
+
   function swMethod(m) {
-    document.getElementById('sw-manual-fields').classList.toggle('hidden', m !== 'manual');
-    document.getElementById('sw-monthly-fields').classList.toggle('hidden', m !== 'monthly');
-    // Show Zimmerman params for both zimmerman and eto (eto uses them as fallback)
-    document.getElementById('sw-zimm-fields').classList.toggle('hidden', m !== 'zimmerman' && m !== 'eto');
-    document.getElementById('sw-eto-fields').classList.toggle('hidden', m !== 'eto');
+    // Map of method value → {containerId, fieldsId, isActive}
+      var entries = [
+      { method: '',          container: 'sw-method-none',       fields: null },
+      { method: 'manual',    container: 'sw-method-manual',     fields: 'sw-manual-fields' },
+      { method: 'monthly',   container: 'sw-method-monthly',    fields: 'sw-monthly-fields' },
+      { method: 'zimmerman', container: 'sw-method-zimmerman',  fields: 'sw-zimm-fields' },
+      { method: 'eto',       container: 'sw-method-eto',        fields: 'sw-eto-fields' },
+    ];
+    entries.forEach(function(e) {
+      var active = e.method === m;
+      var container = document.getElementById(e.container);
+      if (container) {
+        container.classList.toggle('border-emerald-400', active);
+        container.classList.toggle('bg-emerald-50',      active);
+        container.classList.toggle('border-slate-200',   !active);
+      }
+      if (e.fields) {
+        var panel = document.getElementById(e.fields);
+        if (panel) {
+          panel.classList.toggle('hidden', !active);
+          // Enable/disable inputs so only visible fields are submitted
+          panel.querySelectorAll('input, select, textarea').forEach(function(el) {
+            el.disabled = !active;
+          });
+        }
+      }
+    });
   }
 </script>
 

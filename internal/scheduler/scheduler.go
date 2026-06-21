@@ -254,7 +254,7 @@ func (s *Scheduler) tick(now time.Time) {
 }
 
 func runSchedule(ctx context.Context, eng *zone.Engine, sched config.Schedule, hist *history.Store, sw config.SmartWateringConfig) {
-	if sw.Enabled && sw.Lat != 0 {
+	if sw.Enabled && sw.SkipEnabled && sw.Lat != 0 {
 		res, err := weather.FetchToday(sw.Lat, sw.Lon)
 		if err != nil {
 			logger.Warnf(logTag, "schedule %d: weather fetch failed: %v", sched.ID, err)

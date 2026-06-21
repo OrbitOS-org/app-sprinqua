@@ -30,7 +30,11 @@
       </div>
       <div class="flex-shrink-0 text-right">
         <p class="text-sm font-semibold text-slate-700">{{$sc.DisplayTime}}</p>
-        <p class="text-xs text-slate-400">{{$sc.TotalMins}} {{$.S.sched_form_mins}}</p>
+        <p class="text-xs text-slate-400 flex items-center justify-end gap-1">
+          {{if $sc.SwBadge}}<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full
+            {{if $sc.HasAdj}}bg-emerald-100 text-emerald-700{{else}}bg-amber-100 text-amber-700{{end}}">⚡ {{$sc.SwBadge}}</span>{{end}}
+          {{if $sc.HasAdj}}{{$sc.AdjTotalMins}}{{else}}{{$sc.TotalMins}}{{end}} {{$.S.sched_form_mins}}
+        </p>
       </div>
     </div>
 
@@ -38,7 +42,8 @@
       {{range $i, $step := $sc.ZoneSteps}}
       {{if $i}}<span class="text-slate-300 text-xs">→</span>{{end}}
       <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full text-white"
-            style="background-color: {{$step.Color}}">{{$step.Name}} · {{$step.DurMins}}{{$.S.sched_form_mins}}</span>
+            style="background-color: {{$step.Color}}"
+            {{if $step.HasAdj}}title="{{$.S.sched_form_mins_base}}: {{$step.DurMins}}{{$.S.sched_form_mins}}"{{end}}>{{$step.Name}} · {{if $step.HasAdj}}{{$step.AdjDurMins}}{{else}}{{$step.DurMins}}{{end}}{{$.S.sched_form_mins}}</span>
       {{end}}
     </div>
 

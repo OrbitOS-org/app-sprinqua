@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"sort"
 	"net/http"
 	"net/url"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/OrbitOS-org/sdk-go/v26/client"
 	"github.com/OrbitOS-org/sdk-go/v26/logger"
+	"sprinqua/internal/adjustment"
 	"sprinqua/internal/board"
 	"sprinqua/internal/config"
 	"sprinqua/internal/history"
@@ -93,6 +95,8 @@ type settingsData struct {
 	MQTT            config.MQTTConfig
 	TimeFormat      string
 	WinterMode      bool
+	PassiveMode     bool
+	MQTTConnected   bool
 	SmartWatering   config.SmartWateringConfig
 	EToCalculating  bool
 	SetupDone       bool
@@ -138,6 +142,8 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		MQTT:            s.cfg.MQTT,
 		TimeFormat:      tf,
 		WinterMode:      s.cfg.WinterMode,
+		PassiveMode:     s.cfg.MQTT.IsPassive(),
+		MQTTConnected:   s.mqttClient.IsConnected(),
 		SmartWatering:   sw,
 		EToCalculating:  etoCalc,
 		SetupDone:       s.cfg.SetupDone,
@@ -206,6 +212,7 @@ func (s *Server) handleSettingsSave(w http.ResponseWriter, r *http.Request) {
 	s.sched.SetPaused(s.cfg.MQTT.IsPassive() || s.cfg.WinterMode)
 
 	swEnabled := r.FormValue("sw_enabled") == "1"
+	swSkipEnabled := r.FormValue("sw_skip_enabled") == "1"
 	swLat, _ := strconv.ParseFloat(r.FormValue("sw_lat"), 64)
 	swLon, _ := strconv.ParseFloat(r.FormValue("sw_lon"), 64)
 	swThresh, _ := strconv.ParseFloat(r.FormValue("sw_threshold"), 64)
@@ -250,6 +257,7 @@ func (s *Server) handleSettingsSave(w http.ResponseWriter, r *http.Request) {
 
 	s.cfg.SmartWatering = config.SmartWateringConfig{
 		Enabled:                 swEnabled,
+		SkipEnabled:             swSkipEnabled,
 		Lat:                     swLat,
 		Lon:                     swLon,
 		RainThresholdMM:         swThresh,
@@ -567,8 +575,9 @@ func (s *Server) handleSetupStep3(w http.ResponseWriter, r *http.Request) {
 
 type dashboardData struct {
 	basePage
-	Zones      []zone.State
-	WinterMode bool
+	Zones       []zone.State
+	WinterMode  bool
+	PassiveMode bool
 }
 
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
@@ -577,9 +586,10 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		states = s.engine.States()
 	}
 	s.render(w, "dashboard", dashboardData{
-		basePage:   s.page(r),
-		Zones:      states,
-		WinterMode: s.cfg.WinterMode,
+		basePage:    s.page(r),
+		Zones:       states,
+		WinterMode:  s.cfg.WinterMode,
+		PassiveMode: s.cfg.MQTT.IsPassive(),
 	})
 }
 
@@ -714,16 +724,21 @@ type schedulePageData struct {
 }
 
 type zoneStepView struct {
-	ZoneID  int
-	Name    string
-	DurMins int
-	Color   string // persistent hex color matching the zone
+	ZoneID     int
+	Name       string
+	DurMins    int
+	AdjDurMins int  // effective duration after smart watering multiplier; 0 = same as DurMins
+	HasAdj     bool // true when a deterministic smart watering adjustment applies
+	Color      string // persistent hex color matching the zone
 }
 
 type scheduleView struct {
 	config.Schedule
 	ZoneSteps    []zoneStepView
 	TotalMins    int
+	AdjTotalMins int    // effective total after adjustment; 0 = same as TotalMins
+	HasAdj       bool   // true when deterministic SW adjustment differs from 1×
+	SwBadge      string // "×1.5" for deterministic, "~" for weather-based, "" if SW off
 	NextRun      string
 	DisplayTime  string
 	Running      bool // this program is the one currently mid-run
@@ -754,6 +769,7 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 
 	// Schedule card views.
 	runningID, anyRunning := s.sched.RunningID()
+	sw := s.cfg.SmartWatering
 
 	views := make([]scheduleView, len(s.cfg.Schedules))
 	for i, sc := range s.cfg.Schedules {
@@ -766,19 +782,50 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 				nextStr = next.Format("Mon 15:04")
 			}
 		}
-		steps := make([]zoneStepView, len(sc.Zones))
-		for j, z := range sc.Zones {
-			steps[j] = zoneStepView{
-				ZoneID:  z.ZoneID,
-				Name:    zmap[z.ZoneID].Name,
-				DurMins: z.DurMins,
-				Color:   zoneColor[z.ZoneID],
+
+		// Determine smart watering multiplier for display.
+		// Manual and monthly are deterministic; zimmerman/eto depend on weather.
+		mult := 1.0
+		swBadge := ""
+		hasAdj := false
+		if sc.SmartWatering && sw.Enabled && sw.Method != "" {
+			switch sw.Method {
+			case "manual", "monthly":
+				mult = adjustment.Calc(sw, nil)
+				if mult != 1.0 {
+					hasAdj = true
+					swBadge = fmt.Sprintf("×%.2g", mult)
+				}
+			default:
+				swBadge = "~"
 			}
 		}
+
+		steps := make([]zoneStepView, len(sc.Zones))
+		adjTotal := 0
+		for j, z := range sc.Zones {
+			adjDur := 0
+			if hasAdj {
+				adjDur = int(math.Round(float64(z.DurMins) * mult))
+			}
+			adjTotal += adjDur
+			steps[j] = zoneStepView{
+				ZoneID:     z.ZoneID,
+				Name:       zmap[z.ZoneID].Name,
+				DurMins:    z.DurMins,
+				AdjDurMins: adjDur,
+				HasAdj:     hasAdj,
+				Color:      zoneColor[z.ZoneID],
+			}
+		}
+
 		views[i] = scheduleView{
 			Schedule:     sc,
 			ZoneSteps:    steps,
 			TotalMins:    sc.TotalMins(),
+			AdjTotalMins: adjTotal,
+			HasAdj:       hasAdj,
+			SwBadge:      swBadge,
 			NextRun:      nextStr,
 			DisplayTime:  formatStartTime(sc.StartTime, use12h),
 			Running:      sc.ID == runningID,

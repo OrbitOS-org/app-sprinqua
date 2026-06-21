@@ -81,6 +81,13 @@ func (c *Client) Connect(cfg config.MQTTConfig, zones []config.Zone, eng *zone.E
 	}
 }
 
+// IsConnected reports whether the MQTT client currently has an active connection.
+func (c *Client) IsConnected() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.pahoC != nil && c.pahoC.IsConnected()
+}
+
 // Disconnect cleanly closes the MQTT connection and removes the engine callback.
 func (c *Client) Disconnect() {
 	c.mu.Lock()

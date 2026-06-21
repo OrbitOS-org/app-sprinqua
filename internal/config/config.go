@@ -114,6 +114,7 @@ type Zone struct {
 
 type SmartWateringConfig struct {
 	Enabled         bool        `json:"enabled"`
+	SkipEnabled     bool        `json:"skip_enabled"`      // skip entire session on rain/frost; migrated to true for existing configs
 	Lat             float64     `json:"lat"`
 	Lon             float64     `json:"lon"`
 	RainThresholdMM float64     `json:"rain_threshold_mm"` // skip if daily rain >= this; 0 → default 2mm
@@ -134,6 +135,24 @@ type SmartWateringConfig struct {
 	Altitude                float64 `json:"altitude,omitempty"`
 	EToBaseline             float64 `json:"eto_baseline,omitempty"`              // mean daily ETo mm/day over last 12 months
 	EToBaselineCalculatedAt string  `json:"eto_baseline_calculated_at,omitempty"` // ISO date of last calculation
+}
+
+// UnmarshalJSON migrates configs created before SkipEnabled was introduced.
+// Old configs had skip behavior implicit whenever Enabled was true, so we
+// default SkipEnabled=true when the key is absent from the JSON object.
+func (s *SmartWateringConfig) UnmarshalJSON(data []byte) error {
+	type Alias SmartWateringConfig
+	if err := json.Unmarshal(data, (*Alias)(s)); err != nil {
+		return err
+	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return nil // already parsed above; ignore map error
+	}
+	if _, present := raw["skip_enabled"]; !present && s.Enabled {
+		s.SkipEnabled = true
+	}
+	return nil
 }
 
 func (s SmartWateringConfig) EffectiveThreshold() float64 {
