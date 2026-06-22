@@ -195,3 +195,31 @@ func zoneActive(states []zone.State, id int) bool {
 	}
 	return false
 }
+
+func TestNextRunGlobalPicksEarliest(t *testing.T) {
+	now := time.Now()
+	tomorrow := int(now.AddDate(0, 0, 1).Weekday())
+	dayAfter := int(now.AddDate(0, 0, 2).Weekday())
+
+	schedules := []config.Schedule{
+		{ID: 1, Name: "Late", Enabled: true, Days: []int{tomorrow}, StartTime: "09:00",
+			Zones: []config.ProgramZone{{ZoneID: 1, DurMins: 10}}},
+		{ID: 2, Name: "Early", Enabled: true, Days: []int{tomorrow}, StartTime: "06:00",
+			Zones: []config.ProgramZone{{ZoneID: 1, DurMins: 10}}},
+		{ID: 3, Name: "Disabled", Enabled: false, Days: []int{tomorrow}, StartTime: "05:00",
+			Zones: []config.ProgramZone{{ZoneID: 1, DurMins: 10}}},
+		{ID: 4, Name: "LaterDay", Enabled: true, Days: []int{dayAfter}, StartTime: "05:00",
+			Zones: []config.ProgramZone{{ZoneID: 1, DurMins: 10}}},
+	}
+
+	got, when, ok := NextRunGlobal(schedules)
+	if !ok {
+		t.Fatal("expected a next run")
+	}
+	if got.ID != 2 {
+		t.Fatalf("expected schedule 2 (earliest), got id=%d name=%q", got.ID, got.Name)
+	}
+	if when.Hour() != 6 || when.Minute() != 0 {
+		t.Fatalf("expected 06:00, got %02d:%02d", when.Hour(), when.Minute())
+	}
+}

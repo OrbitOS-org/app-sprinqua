@@ -589,9 +589,87 @@ func (s *Server) handleSetupStep3(w http.ResponseWriter, r *http.Request) {
 
 type dashboardData struct {
 	basePage
-	Zones       []zone.State
-	WinterMode  bool
-	PassiveMode bool
+	Zones            []zone.State
+	WinterMode       bool
+	PassiveMode      bool
+	HasNextRun       bool
+	NextRunName      string
+	NextRunWhen      string
+	NextSwBadge      string
+	NextHasAdj       bool
+	NextSwEstimate   bool
+	NextTotalRunMins int
+	IsRunning        bool
+	RunningSchedName string
+}
+
+func scheduleDisplayName(sc config.Schedule, strs map[string]string) string {
+	if sc.Name != "" {
+		return sc.Name
+	}
+	return fmt.Sprintf(strs["sched_program_num"], sc.ID)
+}
+
+// computeScheduleSWDisplay returns smart-watering badge and effective total run minutes for UI.
+func computeScheduleSWDisplay(sc config.Schedule, sw config.SmartWateringConfig, yesterday *weather.DailyData) (mult float64, swBadge string, hasAdj, swEstimate bool, totalRunMins int) {
+	mult = 1.0
+	totalRunMins = sc.TotalRunMins()
+	if !sc.SmartWatering || !sw.Enabled || sw.Method == "" {
+		return
+	}
+	switch sw.Method {
+	case "manual", "monthly":
+		mult = adjustment.Calc(sw, nil)
+		if mult != 1.0 {
+			hasAdj = true
+			swBadge = fmt.Sprintf("×%.2g", mult)
+		}
+	default:
+		swBadge = "~"
+		if yesterday != nil {
+			mult = adjustment.Calc(sw, yesterday)
+			if mult != 1.0 {
+				hasAdj = true
+				swEstimate = true
+				swBadge = fmt.Sprintf("~×%.2g", mult)
+			}
+		}
+	}
+	if hasAdj {
+		totalRunMins = 0
+		for j, z := range sc.Zones {
+			totalRunMins += int(math.Round(float64(z.DurMins) * mult))
+			if j < len(sc.Zones)-1 {
+				totalRunMins += z.SoakAfterMins
+			}
+		}
+	}
+	return
+}
+
+func formatNextRunWhen(t time.Time, use12h bool, strs map[string]string) string {
+	now := time.Now()
+	loc := now.Location()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+	runDay := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, loc)
+
+	var dayPart string
+	switch {
+	case runDay.Equal(today):
+		dayPart = strs["dash_next_today"]
+	case runDay.Equal(today.AddDate(0, 0, 1)):
+		dayPart = strs["dash_next_tomorrow"]
+	default:
+		dayPart = strs[fmt.Sprintf("day_%d", int(t.Weekday()))]
+	}
+
+	var timePart string
+	if use12h {
+		timePart = t.Format("3:04 PM")
+	} else {
+		timePart = t.Format("15:04")
+	}
+	return dayPart + " " + timePart
 }
 
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
@@ -599,12 +677,49 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	if s.engine != nil {
 		states = s.engine.States()
 	}
-	s.render(w, "dashboard", dashboardData{
-		basePage:    s.page(r),
+	pg := s.page(r)
+	use12h := s.cfg.TimeFormat == "12h"
+
+	data := dashboardData{
+		basePage:    pg,
 		Zones:       states,
 		WinterMode:  s.cfg.WinterMode,
 		PassiveMode: s.cfg.MQTT.IsPassive(),
-	})
+	}
+
+	if s.sched != nil {
+		if id, ok := s.sched.RunningID(); ok {
+			for _, sc := range s.cfg.Schedules {
+				if sc.ID == id {
+					data.IsRunning = true
+					data.RunningSchedName = scheduleDisplayName(sc, pg.S)
+					break
+				}
+			}
+		}
+	}
+
+	if !data.IsRunning && !data.WinterMode && !data.PassiveMode {
+		if sc, when, ok := scheduler.NextRunGlobal(s.cfg.Schedules); ok {
+			sw := s.cfg.SmartWatering
+			var yesterday *weather.DailyData
+			if sw.Enabled && sw.Lat != 0 && (sw.Method == "zimmerman" || sw.Method == "eto") {
+				if d, err := weather.FetchYesterday(sw.Lat, sw.Lon); err == nil {
+					yesterday = d
+				}
+			}
+			_, badge, hasAdj, est, totalRun := computeScheduleSWDisplay(sc, sw, yesterday)
+			data.HasNextRun = true
+			data.NextRunName = scheduleDisplayName(sc, pg.S)
+			data.NextRunWhen = formatNextRunWhen(when, use12h, pg.S)
+			data.NextSwBadge = badge
+			data.NextHasAdj = hasAdj
+			data.NextSwEstimate = est
+			data.NextTotalRunMins = totalRun
+		}
+	}
+
+	s.render(w, "dashboard", data)
 }
 
 // ── Zone Fragment (HTMX polling) ──────────────────────────────────────────────
@@ -824,44 +939,19 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 		}
 
 		// Determine smart watering multiplier for display.
-		// Manual and monthly are deterministic; zimmerman/eto use yesterday's weather as estimate.
-		mult := 1.0
-		swBadge := ""
-		hasAdj := false
-		swEstimate := false
-		if sc.SmartWatering && sw.Enabled && sw.Method != "" {
-			switch sw.Method {
-			case "manual", "monthly":
-				mult = adjustment.Calc(sw, nil)
-				if mult != 1.0 {
-					hasAdj = true
-					swBadge = fmt.Sprintf("×%.2g", mult)
-				}
-			default:
-				swBadge = "~"
-				if yesterdayData != nil {
-					mult = adjustment.Calc(sw, yesterdayData)
-					if mult != 1.0 {
-						hasAdj = true
-						swEstimate = true
-						swBadge = fmt.Sprintf("~×%.2g", mult)
-					}
-				}
+		mult, swBadge, hasAdj, swEstimate, adjRunTotal := computeScheduleSWDisplay(sc, sw, yesterdayData)
+		adjTotal := 0
+		if hasAdj {
+			for _, z := range sc.Zones {
+				adjTotal += int(math.Round(float64(z.DurMins) * mult))
 			}
 		}
 
 		steps := make([]zoneStepView, len(sc.Zones))
-		adjTotal := 0
-		adjRunTotal := 0
 		for j, z := range sc.Zones {
 			adjDur := 0
 			if hasAdj {
 				adjDur = int(math.Round(float64(z.DurMins) * mult))
-				adjTotal += adjDur
-				adjRunTotal += adjDur
-			}
-			if j < len(sc.Zones)-1 {
-				adjRunTotal += z.SoakAfterMins
 			}
 			steps[j] = zoneStepView{
 				ZoneID:        z.ZoneID,

@@ -376,6 +376,25 @@ func NextRunFor(sched config.Schedule) *time.Time {
 	return nil
 }
 
+// NextRunGlobal returns the enabled schedule with the earliest upcoming run, if any.
+func NextRunGlobal(schedules []config.Schedule) (config.Schedule, time.Time, bool) {
+	var best config.Schedule
+	var bestTime time.Time
+	found := false
+	for _, sc := range schedules {
+		t := NextRunFor(sc)
+		if t == nil {
+			continue
+		}
+		if !found || t.Before(bestTime) {
+			best = sc
+			bestTime = *t
+			found = true
+		}
+	}
+	return best, bestTime, found
+}
+
 func dayInList(days []int, day int) bool {
 	for _, d := range days {
 		if d == day {
