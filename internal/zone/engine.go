@@ -25,6 +25,7 @@ type State struct {
 	Active    bool
 	StartedAt time.Time
 	MaxSecs   int
+	PulseSecs int // effective pulse duration in seconds (for dashboard button)
 }
 
 func (s State) SecondsActive() int {
@@ -308,6 +309,7 @@ func (e *Engine) States() []State {
 			Active:    en.active,
 			StartedAt: en.startedAt,
 			MaxSecs:   en.cfg.MaxSecs,
+			PulseSecs: en.cfg.EffectivePulseSecs(),
 		})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })

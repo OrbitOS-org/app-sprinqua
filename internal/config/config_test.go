@@ -31,7 +31,7 @@ func TestScheduleUnmarshalMultiZoneRoundTrip(t *testing.T) {
 	sc := Schedule{
 		ID:        1,
 		Name:      "Morning",
-		Zones:     []ProgramZone{{ZoneID: 1, DurMins: 5}, {ZoneID: 2, DurMins: 10}},
+		Zones:     []ProgramZone{{ZoneID: 1, DurMins: 5, SoakAfterMins: 3}, {ZoneID: 2, DurMins: 10}},
 		Days:      []int{1, 2, 3},
 		StartTime: "06:00",
 		Enabled:   true,
@@ -49,5 +49,20 @@ func TestScheduleUnmarshalMultiZoneRoundTrip(t *testing.T) {
 	}
 	if got.TotalMins() != 15 {
 		t.Fatalf("expected TotalMins=15, got %d", got.TotalMins())
+	}
+	if got.TotalRunMins() != 18 {
+		t.Fatalf("expected TotalRunMins=18, got %d", got.TotalRunMins())
+	}
+}
+
+func TestTotalRunMinsSoakOnlyBetweenSteps(t *testing.T) {
+	sc := Schedule{
+		Zones: []ProgramZone{
+			{ZoneID: 1, DurMins: 10, SoakAfterMins: 5},
+			{ZoneID: 2, DurMins: 8, SoakAfterMins: 99}, // last step soak ignored
+		},
+	}
+	if sc.TotalRunMins() != 23 {
+		t.Fatalf("expected TotalRunMins=23, got %d", sc.TotalRunMins())
 	}
 }

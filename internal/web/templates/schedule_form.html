@@ -1,14 +1,20 @@
 {{define "zone_step_row"}}
 <div class="zone-step flex items-center gap-2">
   <select name="zone_id"
-    class="flex-1 rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-800 bg-white
+    class="flex-1 min-w-0 rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-800 bg-white
            focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none">
     {{range .Zones}}
     <option value="{{.ID}}" {{if eq $.ZoneID .ID}}selected{{end}}>{{.Name}}</option>
     {{end}}
   </select>
   <input type="number" name="dur_mins" value="{{.DurMins}}" min="1" max="240" inputmode="numeric"
-    class="w-20 rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-800 bg-white
+    title="{{.S.sched_form_dur_label}}"
+    class="w-16 rounded-xl border border-slate-300 px-2 py-2.5 text-sm text-center text-slate-800 bg-white
+           focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+  <input type="number" name="soak_mins" value="{{.SoakAfterMins}}" min="0" max="120" inputmode="numeric"
+    title="{{.S.sched_form_soak_hint}}"
+    placeholder="{{.S.sched_form_soak_short}}"
+    class="w-16 rounded-xl border border-slate-300 px-2 py-2.5 text-sm text-center text-slate-800 bg-white
            focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
   <button type="button" onclick="moveZoneStep(this, -1)"
     class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100">▲</button>
@@ -151,19 +157,20 @@
             <span id="zones-error" class="text-xs font-medium text-red-500 hidden">{{.S.sched_zones_error}}</span>
             {{end}}
           </div>
+          <p class="text-[11px] text-slate-400 mb-2">{{.S.sched_form_zones_cols}}</p>
 
           <div id="zone-steps" class="space-y-2 mb-2">
             {{if .Schedule.Zones}}
             {{range .Schedule.Zones}}
-            {{template "zone_step_row" (dict "Zones" $.Zones "ZoneID" .ZoneID "DurMins" .DurMins)}}
+            {{template "zone_step_row" (dict "S" $.S "Zones" $.Zones "ZoneID" .ZoneID "DurMins" .DurMins "SoakAfterMins" .SoakAfterMins)}}
             {{end}}
             {{else}}
-            {{template "zone_step_row" (dict "Zones" .Zones "ZoneID" 0 "DurMins" 10)}}
+            {{template "zone_step_row" (dict "S" $.S "Zones" .Zones "ZoneID" 0 "DurMins" 10 "SoakAfterMins" 0)}}
             {{end}}
           </div>
 
           <template id="zone-step-template">
-            {{template "zone_step_row" (dict "Zones" .Zones "ZoneID" 0 "DurMins" 10)}}
+            {{template "zone_step_row" (dict "S" .S "Zones" .Zones "ZoneID" 0 "DurMins" 10 "SoakAfterMins" 0)}}
           </template>
 
           <button type="button" onclick="addZoneStep()"

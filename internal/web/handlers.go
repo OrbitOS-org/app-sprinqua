@@ -325,10 +325,12 @@ func (s *Server) handleZonesSave(w http.ResponseWriter, r *http.Request) {
 		if maxMins <= 0 {
 			maxMins = 30
 		}
+		pulseMins := parseZonePulseMins(r, id, maxMins)
 
 		s.cfg.Zones[i].Name = name
 		s.cfg.Zones[i].Type = zoneType
 		s.cfg.Zones[i].MaxSecs = maxMins * 60
+		s.cfg.Zones[i].PulseSecs = pulseMins * 60
 		s.cfg.Zones[i].Enabled = r.FormValue(fmt.Sprintf("zone_%d_enabled", id)) == "1"
 	}
 
@@ -422,12 +424,13 @@ func (s *Server) handleSetupStep1(w http.ResponseWriter, r *http.Request) {
 	zones := make([]config.Zone, b.Channels)
 	for i := range zones {
 		zones[i] = config.Zone{
-			ID:      i + 1,
-			Name:    fmt.Sprintf("Zone %d", i+1),
-			Channel: i + 1,
-			Type:    "sprinkler",
-			MaxSecs: 30 * 60,
-			Enabled: true,
+			ID:        i + 1,
+			Name:      fmt.Sprintf("Zone %d", i+1),
+			Channel:   i + 1,
+			Type:      "sprinkler",
+			MaxSecs:   30 * 60,
+			PulseSecs: config.DefaultPulseSecs,
+			Enabled:   true,
 		}
 	}
 	s.cfg.Zones = zones
@@ -460,9 +463,11 @@ func (s *Server) handleSetupStep2(w http.ResponseWriter, r *http.Request) {
 		if maxMins <= 0 {
 			maxMins = 30
 		}
+		pulseMins := parseZonePulseMins(r, id, maxMins)
 		s.cfg.Zones[i].Name = name
 		s.cfg.Zones[i].Type = zoneType
 		s.cfg.Zones[i].MaxSecs = maxMins * 60
+		s.cfg.Zones[i].PulseSecs = pulseMins * 60
 		s.cfg.Zones[i].Enabled = r.FormValue(fmt.Sprintf("zone_%d_enabled", id)) == "1"
 	}
 
@@ -656,9 +661,9 @@ func (s *Server) handleZonePulse(w http.ResponseWriter, r *http.Request) {
 	if eng == nil {
 		return
 	}
-	secs, _ := strconv.Atoi(r.FormValue("secs"))
-	if secs <= 0 {
-		secs = 300
+	secs := config.DefaultPulseSecs
+	if z, ok := s.cfg.ZoneMap()[id]; ok {
+		secs = z.EffectivePulseSecs()
 	}
 	if err := eng.Pulse(id, secs); err != nil {
 		logger.Errorf(logTag, "zone %d pulse: %v", id, err)
@@ -687,6 +692,20 @@ func (s *Server) zonePrecheck(w http.ResponseWriter, r *http.Request) (int, *zon
 		return 0, nil
 	}
 	return id, s.engine
+}
+
+func parseZonePulseMins(r *http.Request, zoneID, maxMins int) int {
+	pulseMins, _ := strconv.Atoi(r.FormValue(fmt.Sprintf("zone_%d_pulse", zoneID)))
+	if pulseMins <= 0 {
+		pulseMins = config.DefaultPulseSecs / 60
+	}
+	if pulseMins > 120 {
+		pulseMins = 120
+	}
+	if maxMins > 0 && pulseMins > maxMins {
+		pulseMins = maxMins
+	}
+	return pulseMins
 }
 
 // ── Schedule ──────────────────────────────────────────────────────────────────
@@ -733,19 +752,22 @@ type schedulePageData struct {
 }
 
 type zoneStepView struct {
-	ZoneID     int
-	Name       string
-	DurMins    int
-	AdjDurMins int  // effective duration after smart watering multiplier; 0 = same as DurMins
-	HasAdj     bool // true when a deterministic smart watering adjustment applies
-	Color      string // persistent hex color matching the zone
+	ZoneID        int
+	Name          string
+	DurMins       int
+	AdjDurMins    int  // effective duration after smart watering multiplier; 0 = same as DurMins
+	HasAdj        bool // true when a smart watering adjustment applies
+	SoakAfterMins int  // pause after this zone before the next
+	Color         string // persistent hex color matching the zone
 }
 
 type scheduleView struct {
 	config.Schedule
-	ZoneSteps    []zoneStepView
-	TotalMins    int
-	AdjTotalMins int    // effective total after adjustment; 0 = same as TotalMins
+	ZoneSteps      []zoneStepView
+	TotalMins      int // irrigation only
+	TotalRunMins   int // irrigation + soak pauses
+	AdjTotalMins   int // adjusted irrigation total; 0 = same as TotalMins
+	AdjTotalRunMins int // adjusted total including soak pauses
 	HasAdj       bool   // true when SW adjustment differs from 1× (deterministic or estimated)
 	SwEstimate   bool   // true when adjustment is a weather-based estimate (~×N)
 	SwBadge      string // "×1.5" deterministic, "~×0.8" estimated, "~" if unknown, "" if SW off
@@ -830,27 +852,35 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 
 		steps := make([]zoneStepView, len(sc.Zones))
 		adjTotal := 0
+		adjRunTotal := 0
 		for j, z := range sc.Zones {
 			adjDur := 0
 			if hasAdj {
 				adjDur = int(math.Round(float64(z.DurMins) * mult))
+				adjTotal += adjDur
+				adjRunTotal += adjDur
 			}
-			adjTotal += adjDur
+			if j < len(sc.Zones)-1 {
+				adjRunTotal += z.SoakAfterMins
+			}
 			steps[j] = zoneStepView{
-				ZoneID:     z.ZoneID,
-				Name:       zmap[z.ZoneID].Name,
-				DurMins:    z.DurMins,
-				AdjDurMins: adjDur,
-				HasAdj:     hasAdj,
-				Color:      zoneColor[z.ZoneID],
+				ZoneID:        z.ZoneID,
+				Name:          zmap[z.ZoneID].Name,
+				DurMins:       z.DurMins,
+				AdjDurMins:    adjDur,
+				HasAdj:        hasAdj,
+				SoakAfterMins: z.SoakAfterMins,
+				Color:         zoneColor[z.ZoneID],
 			}
 		}
 
 		views[i] = scheduleView{
-			Schedule:     sc,
-			ZoneSteps:    steps,
-			TotalMins:    sc.TotalMins(),
-			AdjTotalMins: adjTotal,
+			Schedule:        sc,
+			ZoneSteps:       steps,
+			TotalMins:       sc.TotalMins(),
+			TotalRunMins:    sc.TotalRunMins(),
+			AdjTotalMins:    adjTotal,
+			AdjTotalRunMins: adjRunTotal,
 			HasAdj:       hasAdj,
 			SwEstimate:   swEstimate,
 			SwBadge:      swBadge,
@@ -886,11 +916,14 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 		}
 		baseMin := t.Hour()*60 + t.Minute()
 		offset := 0
-		for _, step := range sc.Zones {
+		for i, step := range sc.Zones {
 			sm := baseMin + offset
 			em := sm + step.DurMins
 			offset += step.DurMins
 			if step.DurMins <= 0 {
+				if i < len(sc.Zones)-1 {
+					offset += step.SoakAfterMins
+				}
 				continue
 			}
 			if sm < cStart {
@@ -914,6 +947,9 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 				if d >= 0 && d <= 6 {
 					dayRaw[d] = append(dayRaw[d], rb)
 				}
+			}
+			if i < len(sc.Zones)-1 {
+				offset += step.SoakAfterMins
 			}
 		}
 	}
@@ -1595,6 +1631,7 @@ func (s *Server) parseScheduleForm(r *http.Request) config.Schedule {
 	}
 	zoneIDs := r.Form["zone_id"]
 	durs := r.Form["dur_mins"]
+	soaks := r.Form["soak_mins"]
 	var zones []config.ProgramZone
 	for i, zs := range zoneIDs {
 		zoneID, err := strconv.Atoi(zs)
@@ -1608,7 +1645,17 @@ func (s *Server) parseScheduleForm(r *http.Request) config.Schedule {
 		if dur <= 0 {
 			dur = 10
 		}
-		zones = append(zones, config.ProgramZone{ZoneID: zoneID, DurMins: dur})
+		soak := 0
+		if i < len(soaks) {
+			soak, _ = strconv.Atoi(soaks[i])
+		}
+		if soak < 0 {
+			soak = 0
+		}
+		if soak > 120 {
+			soak = 120
+		}
+		zones = append(zones, config.ProgramZone{ZoneID: zoneID, DurMins: dur, SoakAfterMins: soak})
 	}
 	var days []int
 	for _, d := range r.Form["days"] {

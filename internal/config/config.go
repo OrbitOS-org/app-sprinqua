@@ -39,15 +39,28 @@ type Schedule struct {
 // ProgramZone is one step in a multi-zone program: a zone and how long it
 // runs for, in the order zones are listed within the Schedule.
 type ProgramZone struct {
-	ZoneID  int `json:"zone_id"`
-	DurMins int `json:"dur_mins"`
+	ZoneID        int `json:"zone_id"`
+	DurMins       int `json:"dur_mins"`
+	SoakAfterMins int `json:"soak_after_mins,omitempty"` // pause after this zone before the next; 0 = none
 }
 
-// TotalMins returns the combined duration of every zone step in the program.
+// TotalMins returns the combined irrigation duration of every zone step.
 func (s Schedule) TotalMins() int {
 	total := 0
 	for _, z := range s.Zones {
 		total += z.DurMins
+	}
+	return total
+}
+
+// TotalRunMins returns irrigation time plus soak pauses between zones.
+func (s Schedule) TotalRunMins() int {
+	total := 0
+	for i, z := range s.Zones {
+		total += z.DurMins
+		if i < len(s.Zones)-1 {
+			total += z.SoakAfterMins
+		}
 	}
 	return total
 }
@@ -104,12 +117,28 @@ func (c *Config) ZoneMap() map[int]Zone {
 }
 
 type Zone struct {
-	ID      int    `json:"id"`
-	Name    string `json:"name"`
-	Channel int    `json:"channel"`
-	Type    string `json:"type"`     // drip | sprinkler | mist
-	MaxSecs int    `json:"max_secs"` // safety auto-off in seconds
-	Enabled bool   `json:"enabled"`
+	ID        int    `json:"id"`
+	Name      string `json:"name"`
+	Channel   int    `json:"channel"`
+	Type      string `json:"type"`      // drip | sprinkler | mist
+	MaxSecs   int    `json:"max_secs"`  // safety auto-off in seconds
+	PulseSecs int    `json:"pulse_secs,omitempty"` // manual pulse duration; 0 → default 5 min
+	Enabled   bool   `json:"enabled"`
+}
+
+// DefaultPulseSecs is the manual pulse duration when PulseSecs is unset.
+const DefaultPulseSecs = 300
+
+// EffectivePulseSecs returns the pulse duration for this zone, capped at MaxSecs.
+func (z Zone) EffectivePulseSecs() int {
+	secs := z.PulseSecs
+	if secs <= 0 {
+		secs = DefaultPulseSecs
+	}
+	if z.MaxSecs > 0 && secs > z.MaxSecs {
+		secs = z.MaxSecs
+	}
+	return secs
 }
 
 type SmartWateringConfig struct {

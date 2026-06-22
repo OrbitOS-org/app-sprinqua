@@ -65,12 +65,11 @@
       </button>
       <button
         hx-post="/api/zones/{{$z.ID}}/pulse"
-        hx-vals='{"secs":"300"}'
         hx-swap="none"
         hx-on::after-request="htmx.trigger(document.body, 'zoneChanged')"
         class="py-3 px-4 rounded-xl border-2 border-amber-300 text-amber-700 text-sm font-semibold
                hover:bg-amber-50 active:bg-amber-100 transition-colors">
-        {{$.S.zone_btn_pulse}}
+        {{printf $.S.zone_btn_pulse_fmt (divInt $z.PulseSecs 60)}}
       </button>
     </div>
     {{end}}

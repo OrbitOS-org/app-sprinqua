@@ -294,7 +294,7 @@ func runSchedule(ctx context.Context, eng *zone.Engine, sched config.Schedule, h
 // is canceled (StopRun) while a zone is active, that zone is turned off
 // immediately and any remaining zones in the sequence are skipped.
 func runZoneSteps(ctx context.Context, eng *zone.Engine, sched config.Schedule, hist *history.Store, mult float64, trigger history.Trigger) {
-	for _, step := range sched.Zones {
+	for i, step := range sched.Zones {
 		if ctx.Err() != nil {
 			logger.Infof(logTag, "schedule %d: stopped, skipping remaining zones", sched.ID)
 			return
@@ -305,31 +305,41 @@ func runZoneSteps(ctx context.Context, eng *zone.Engine, sched config.Schedule, 
 			if hist != nil {
 				hist.Skip(step.ZoneID, trigger)
 			}
-			continue
+		} else {
+			logger.Infof(logTag, "schedule %d zone %d ON for %dmin", sched.ID, step.ZoneID, dur)
+			if err := eng.TurnOn(step.ZoneID); err != nil {
+				logger.Warnf(logTag, "schedule %d zone %d ON: %v", sched.ID, step.ZoneID, err)
+				continue
+			}
+			if hist != nil {
+				hist.Start(step.ZoneID, trigger)
+			}
+			stopped := false
+			select {
+			case <-time.After(time.Duration(dur) * time.Minute):
+			case <-ctx.Done():
+				stopped = true
+			}
+			if err := eng.TurnOff(step.ZoneID); err != nil {
+				logger.Warnf(logTag, "schedule %d zone %d OFF: %v", sched.ID, step.ZoneID, err)
+			}
+			if hist != nil {
+				hist.Stop(step.ZoneID)
+			}
+			if stopped {
+				logger.Infof(logTag, "schedule %d: stopped during zone %d, skipping remaining zones", sched.ID, step.ZoneID)
+				return
+			}
 		}
-		logger.Infof(logTag, "schedule %d zone %d ON for %dmin", sched.ID, step.ZoneID, dur)
-		if err := eng.TurnOn(step.ZoneID); err != nil {
-			logger.Warnf(logTag, "schedule %d zone %d ON: %v", sched.ID, step.ZoneID, err)
-			continue
-		}
-		if hist != nil {
-			hist.Start(step.ZoneID, trigger)
-		}
-		stopped := false
-		select {
-		case <-time.After(time.Duration(dur) * time.Minute):
-		case <-ctx.Done():
-			stopped = true
-		}
-		if err := eng.TurnOff(step.ZoneID); err != nil {
-			logger.Warnf(logTag, "schedule %d zone %d OFF: %v", sched.ID, step.ZoneID, err)
-		}
-		if hist != nil {
-			hist.Stop(step.ZoneID)
-		}
-		if stopped {
-			logger.Infof(logTag, "schedule %d: stopped during zone %d, skipping remaining zones", sched.ID, step.ZoneID)
-			return
+
+		if i < len(sched.Zones)-1 && step.SoakAfterMins > 0 {
+			logger.Infof(logTag, "schedule %d: soak %dmin after zone %d", sched.ID, step.SoakAfterMins, step.ZoneID)
+			select {
+			case <-time.After(time.Duration(step.SoakAfterMins) * time.Minute):
+			case <-ctx.Done():
+				logger.Infof(logTag, "schedule %d: stopped during soak after zone %d", sched.ID, step.ZoneID)
+				return
+			}
 		}
 	}
 	logger.Infof(logTag, "schedule %d complete", sched.ID)
