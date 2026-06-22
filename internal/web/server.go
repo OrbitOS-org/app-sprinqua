@@ -93,6 +93,7 @@ type Server struct {
 	testCancel     context.CancelFunc // non-nil while a relay test is active
 	etoMu          sync.Mutex
 	etoCalculating bool
+	saveMu         sync.Mutex // serializes async background config saves
 }
 
 func New(

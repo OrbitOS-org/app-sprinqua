@@ -215,6 +215,9 @@ func Load(dataDir string) (*Config, error) {
 	return &cfg, json.Unmarshal(data, &cfg)
 }
 
+// Save writes the config atomically: it writes to a temp file first, then
+// renames it over the real file. This prevents a corrupted config.json if
+// the process is killed mid-write (common on Raspberry Pi with SD cards).
 func (c *Config) Save(dataDir string) error {
 	if err := os.MkdirAll(dataDir, 0o755); err != nil {
 		return err
@@ -223,5 +226,9 @@ func (c *Config) Save(dataDir string) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(dataDir, filename), data, 0o644)
+	tmp := filepath.Join(dataDir, filename+".tmp")
+	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+		return err
+	}
+	return os.Rename(tmp, filepath.Join(dataDir, filename))
 }

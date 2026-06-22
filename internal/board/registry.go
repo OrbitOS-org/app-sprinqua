@@ -33,8 +33,20 @@ func (b *Board) PinByChannel(ch int) *client.GpioPin {
 // Order matches docs/index.html (fewer to more channels, same grouping as the site).
 var All = []*Board{
 	{
+		ID:          "sbcomponents-2ch",
+		Name:        "SB Components 2-Channel",
+		Description: "Zero Relay - 2-channel board. Ideal for compact 2-zone setups.",
+		SKU:         "14088",
+		Channels:    2,
+		ActiveLow:   false,
+		Pins: []Channel{
+			{Number: 1, Pin: &client.GpioPin{Name: "GPIO22"}}, // Board Pin 15
+			{Number: 2, Pin: &client.GpioPin{Name: "GPIO5"}},  // Board Pin 29
+		},
+	},
+	{
 		ID:          "waveshare-3ch",
-		Name:        "Waveshare RPi 3-Channel Relay",
+		Name:        "Waveshare 3-Channel",
 		Description: "3-channel relay HAT for Raspberry Pi via direct GPIO.",
 		SKU:         "11638",
 		Channels:    3,
@@ -47,7 +59,7 @@ var All = []*Board{
 	},
 	{
 		ID:          "seengreat-3ch",
-		Name:        "Seengreat 3-CH Relay HAT",
+		Name:        "Seengreat 3-Channel",
 		Description: "3-channel relay expansion board for Raspberry Pi via direct GPIO.",
 		SKU:         "250509",
 		Channels:    3,
@@ -60,7 +72,7 @@ var All = []*Board{
 	},
 	{
 		ID:          "keyestudio-4ch",
-		Name:        "Keyestudio RPI 4-Channel Relay",
+		Name:        "Keyestudio 4-Channel",
 		Description: "4-channel relay board for Raspberry Pi via direct GPIO.",
 		SKU:         "KS0212",
 		Channels:    4,
@@ -74,7 +86,7 @@ var All = []*Board{
 	},
 	{
 		ID:          "seengreat-4ch",
-		Name:        "Seengreat 4-CH Relay HAT",
+		Name:        "Seengreat 4-Channel",
 		Description: "4-channel relay expansion board for Raspberry Pi via direct GPIO.",
 		SKU:         "220741",
 		Channels:    4,
@@ -88,7 +100,7 @@ var All = []*Board{
 	},
 	{
 		ID:          "bc-robotics-4ch",
-		Name:        "BC Robotics 4-Channel Relay HAT",
+		Name:        "BC Robotics 4-Channel",
 		Description: "Raspberry Pi 4 channel 10A relay HAT.",
 		SKU:         "RAS-193",
 		Channels:    4,
@@ -102,7 +114,7 @@ var All = []*Board{
 	},
 	{
 		ID:          "waveshare-pi0-6ch",
-		Name:        "Waveshare RPi Zero 6-ch Relay",
+		Name:        "Waveshare RPi Zero 6-Channel",
 		Description: "6-channel Industrial Relay Module for Raspberry Pi Zero.",
 		SKU:         "20863",
 		Channels:    6,
@@ -118,7 +130,7 @@ var All = []*Board{
 	},
 	{
 		ID:          "waveshare-8ch",
-		Name:        "Waveshare RPi 8-Channel Relay",
+		Name:        "Waveshare 8-Channel",
 		Description: "8-channel relay HAT for Raspberry Pi via direct GPIO.",
 		SKU:         "15423",
 		Channels:    8,
@@ -136,7 +148,7 @@ var All = []*Board{
 	},
 	{
 		ID:          "seengreat-8ch",
-		Name:        "Seengreat 8-CH Relay Board",
+		Name:        "Seengreat 8-Channel",
 		Description: "8-channel optocoupler-isolated relay expansion board for Raspberry Pi, 5–12V wide voltage input.",
 		SKU:         "260115",
 		Channels:    8,

@@ -393,6 +393,12 @@ func (s *Server) handleSetupChannels(w http.ResponseWriter, r *http.Request) {
 	}
 	strs := i18n.Strings(s.lang(r))
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if b.Description != "" {
+		fmt.Fprintf(w, `<p class="text-xs text-slate-400 w-full">%s</p>`, b.Description)
+	}
+	if b.SKU != "" {
+		fmt.Fprintf(w, `<p class="text-[11px] font-mono text-slate-400 w-full mb-1">SKU: %s</p>`, b.SKU)
+	}
 	fmt.Fprintf(w, `<span class="text-xs text-slate-400">%s</span>`, strs["step1_channels_label"])
 	for i, ch := range b.Pins {
 		color := zoneColors[i%len(zoneColors)]
@@ -1083,9 +1089,7 @@ func (s *Server) handleScheduleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	sc.ID = s.cfg.NextScheduleID()
 	s.cfg.Schedules = append(s.cfg.Schedules, sc)
-	if err := s.cfg.Save(s.dataDir); err != nil {
-		logger.Errorf(logTag, "save schedule: %v", err)
-	}
+	s.saveAsync()
 	http.Redirect(w, r, "/schedule", http.StatusFound)
 }
 
@@ -1111,9 +1115,7 @@ func (s *Server) handleScheduleUpdate(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-	if err := s.cfg.Save(s.dataDir); err != nil {
-		logger.Errorf(logTag, "save schedule: %v", err)
-	}
+	s.saveAsync()
 	http.Redirect(w, r, "/schedule", http.StatusFound)
 }
 
@@ -1161,9 +1163,7 @@ func (s *Server) handleScheduleToggle(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-	if err := s.cfg.Save(s.dataDir); err != nil {
-		logger.Errorf(logTag, "save schedule: %v", err)
-	}
+	s.saveAsync()
 	s.render(w, "schedule_list", s.buildSchedulePage(r))
 }
 
@@ -1176,10 +1176,21 @@ func (s *Server) handleScheduleDelete(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	s.cfg.Schedules = kept
-	if err := s.cfg.Save(s.dataDir); err != nil {
-		logger.Errorf(logTag, "save schedule: %v", err)
-	}
+	s.saveAsync()
 	s.render(w, "schedule_list", s.buildSchedulePage(r))
+}
+
+// saveAsync persists the current config in a background goroutine so the HTTP
+// handler can respond immediately, avoiding SD-card write latency on the Pi.
+// A mutex ensures at most one write is in flight at a time.
+func (s *Server) saveAsync() {
+	go func() {
+		s.saveMu.Lock()
+		defer s.saveMu.Unlock()
+		if err := s.cfg.Save(s.dataDir); err != nil {
+			logger.Errorf(logTag, "async save: %v", err)
+		}
+	}()
 }
 
 // ── History ───────────────────────────────────────────────────────────────────

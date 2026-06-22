@@ -69,7 +69,10 @@ func (s *Store) load() error {
 
 func (s *Store) save() {
 	data, _ := json.MarshalIndent(s.entries, "", "  ")
-	_ = os.WriteFile(filepath.Join(s.dataDir, "history.json"), data, 0644)
+	tmp := filepath.Join(s.dataDir, "history.json.tmp")
+	if err := os.WriteFile(tmp, data, 0644); err == nil {
+		_ = os.Rename(tmp, filepath.Join(s.dataDir, "history.json"))
+	}
 }
 
 // Start records the beginning of a zone activation.
