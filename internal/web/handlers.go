@@ -746,8 +746,9 @@ type scheduleView struct {
 	ZoneSteps    []zoneStepView
 	TotalMins    int
 	AdjTotalMins int    // effective total after adjustment; 0 = same as TotalMins
-	HasAdj       bool   // true when deterministic SW adjustment differs from 1×
-	SwBadge      string // "×1.5" for deterministic, "~" for weather-based, "" if SW off
+	HasAdj       bool   // true when SW adjustment differs from 1× (deterministic or estimated)
+	SwEstimate   bool   // true when adjustment is a weather-based estimate (~×N)
+	SwBadge      string // "×1.5" deterministic, "~×0.8" estimated, "~" if unknown, "" if SW off
 	NextRun      string
 	DisplayTime  string
 	Running      bool // this program is the one currently mid-run
@@ -780,6 +781,14 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 	runningID, anyRunning := s.sched.RunningID()
 	sw := s.cfg.SmartWatering
 
+	// Fetch yesterday's weather once for Zimmerman/ETo schedule estimates.
+	var yesterdayData *weather.DailyData
+	if sw.Enabled && sw.Lat != 0 && (sw.Method == "zimmerman" || sw.Method == "eto") {
+		if d, err := weather.FetchYesterday(sw.Lat, sw.Lon); err == nil {
+			yesterdayData = d
+		}
+	}
+
 	views := make([]scheduleView, len(s.cfg.Schedules))
 	for i, sc := range s.cfg.Schedules {
 		next := scheduler.NextRunFor(sc)
@@ -793,10 +802,11 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 		}
 
 		// Determine smart watering multiplier for display.
-		// Manual and monthly are deterministic; zimmerman/eto depend on weather.
+		// Manual and monthly are deterministic; zimmerman/eto use yesterday's weather as estimate.
 		mult := 1.0
 		swBadge := ""
 		hasAdj := false
+		swEstimate := false
 		if sc.SmartWatering && sw.Enabled && sw.Method != "" {
 			switch sw.Method {
 			case "manual", "monthly":
@@ -807,6 +817,14 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 				}
 			default:
 				swBadge = "~"
+				if yesterdayData != nil {
+					mult = adjustment.Calc(sw, yesterdayData)
+					if mult != 1.0 {
+						hasAdj = true
+						swEstimate = true
+						swBadge = fmt.Sprintf("~×%.2g", mult)
+					}
+				}
 			}
 		}
 
@@ -834,6 +852,7 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 			TotalMins:    sc.TotalMins(),
 			AdjTotalMins: adjTotal,
 			HasAdj:       hasAdj,
+			SwEstimate:   swEstimate,
 			SwBadge:      swBadge,
 			NextRun:      nextStr,
 			DisplayTime:  formatStartTime(sc.StartTime, use12h),

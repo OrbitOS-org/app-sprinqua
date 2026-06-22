@@ -148,6 +148,7 @@
   "sched_zones_error": "Add at least one zone.",
   "sched_form_mins": "min",
   "sched_form_mins_base": "Base",
+  "sched_sw_est_hint": "Estimated from yesterday's weather",
   "sched_form_save": "Save",
   "sched_form_cancel": "Cancel",
   "sched_form_enabled": "Active",
