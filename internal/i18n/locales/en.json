@@ -268,5 +268,12 @@
   "hw_check_unknown": "Unknown device",
   "winter_mode_managed_by_ha": "Managed by Home Assistant when in passive mode.",
   "mqtt_status_connected": "Connected",
-  "mqtt_status_disconnected": "Disconnected"
+  "mqtt_status_disconnected": "Disconnected",
+  "backup_title": "Backup & Restore",
+  "backup_export_desc": "Download a backup of all your settings, schedules and zones.",
+  "backup_export_btn": "Export",
+  "backup_import_desc": "Restore from a previously exported backup. This will replace your current configuration.",
+  "backup_import_btn": "Import",
+  "backup_import_err_invalid": "Invalid file — could not read the configuration.",
+  "backup_import_err_incomplete": "Incomplete backup — the setup wizard was not completed."
 }

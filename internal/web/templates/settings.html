@@ -582,45 +582,59 @@
     <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 mb-6">
       <p class="text-xs text-slate-400 mb-4">{{.S.settings_zones_desc}}</p>
       <form method="POST" action="/setup/zones">
-        <div class="space-y-3 mb-5">
+        <div class="space-y-2 mb-5">
           {{range $i, $z := .Zones}}
-          <div class="rounded-xl border border-slate-200 p-4 bg-slate-50">
-            <div class="flex items-center justify-between gap-2 mb-3">
-              <span class="text-xs font-mono font-semibold text-white px-2 py-0.5 rounded-md"
-                    style="background-color: {{zoneColor $i}}">CH{{$z.Channel}}</span>
-              <label class="inline-flex items-center gap-2 cursor-pointer flex-shrink-0">
-                <span class="text-xs font-medium text-slate-500">{{$.S.zone_enabled_label}}</span>
-                <input type="checkbox" name="zone_{{$z.ID}}_enabled" value="1" class="sr-only peer"
-                  {{if $z.Enabled}}checked{{end}}>
-                <div class="relative w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-emerald-500
-                  after:content-[''] after:absolute after:top-0.5 after:left-0.5
-                  after:bg-white after:rounded-full after:h-5 after:w-5
-                  after:transition-all peer-checked:after:translate-x-5"></div>
-              </label>
-            </div>
-            <div class="mb-2">
-              <label class="block text-xs font-medium text-slate-500 mb-1">{{$.S.step2_zone_name}}</label>
-              <input type="text" name="zone_{{$z.ID}}_name" value="{{$z.Name}}"
-                class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-              <div>
-                <label class="block text-xs font-medium text-slate-500 mb-1">{{$.S.step2_zone_type}}</label>
-                <select name="zone_{{$z.ID}}_type"
-                  class="w-full rounded-xl border border-slate-300 px-3 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none">
-                  <option value="drip"{{if eq $z.Type "drip"}} selected{{end}}>{{$.S.type_drip}}</option>
-                  <option value="sprinkler"{{if eq $z.Type "sprinkler"}} selected{{end}}>{{$.S.type_sprinkler}}</option>
-                  <option value="mist"{{if eq $z.Type "mist"}} selected{{end}}>{{$.S.type_mist}}</option>
-                </select>
+          <details class="rounded-xl border border-slate-200 bg-slate-50 group {{if not $z.Enabled}}opacity-60{{end}}">
+            <summary class="px-4 py-3 cursor-pointer select-none list-none flex items-center justify-between gap-3">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="text-xs font-mono font-semibold text-white px-2 py-0.5 rounded-md flex-shrink-0"
+                      style="background-color: {{zoneColor $i}}">CH{{$z.Channel}}</span>
+                <div class="min-w-0">
+                  <p class="text-sm font-semibold text-slate-800 truncate">{{if $z.Name}}{{$z.Name}}{{else}}Zone {{$z.ID}}{{end}}</p>
+                  <p class="text-xs text-slate-400 truncate">
+                    {{if eq $z.Type "drip"}}{{$.S.type_drip}}{{else if eq $z.Type "sprinkler"}}{{$.S.type_sprinkler}}{{else}}{{$.S.type_mist}}{{end}}
+                    · {{divInt $z.MaxSecs 60}}{{$.S.sched_form_mins}}
+                  </p>
+                </div>
               </div>
-              <div>
-                <label class="block text-xs font-medium text-slate-500 mb-1">{{$.S.step2_zone_max}}</label>
-                <input type="number" name="zone_{{$z.ID}}_max" value="{{divInt $z.MaxSecs 60}}" min="1" max="240"
-                  inputmode="numeric"
+              <span class="text-slate-300 text-sm flex-shrink-0 group-open:rotate-90 transition-transform">›</span>
+            </summary>
+            <div class="px-4 pb-4 border-t border-slate-200 pt-3">
+              <div class="flex items-center justify-end gap-2 mb-3">
+                <label class="inline-flex items-center gap-2 cursor-pointer flex-shrink-0">
+                  <span class="text-xs font-medium text-slate-500">{{$.S.zone_enabled_label}}</span>
+                  <input type="checkbox" name="zone_{{$z.ID}}_enabled" value="1" class="sr-only peer"
+                    {{if $z.Enabled}}checked{{end}}>
+                  <div class="relative w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-emerald-500
+                    after:content-[''] after:absolute after:top-0.5 after:left-0.5
+                    after:bg-white after:rounded-full after:h-5 after:w-5
+                    after:transition-all peer-checked:after:translate-x-5"></div>
+                </label>
+              </div>
+              <div class="mb-2">
+                <label class="block text-xs font-medium text-slate-500 mb-1">{{$.S.step2_zone_name}}</label>
+                <input type="text" name="zone_{{$z.ID}}_name" value="{{$z.Name}}"
                   class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
               </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-xs font-medium text-slate-500 mb-1">{{$.S.step2_zone_type}}</label>
+                  <select name="zone_{{$z.ID}}_type"
+                    class="w-full rounded-xl border border-slate-300 px-3 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none">
+                    <option value="drip"{{if eq $z.Type "drip"}} selected{{end}}>{{$.S.type_drip}}</option>
+                    <option value="sprinkler"{{if eq $z.Type "sprinkler"}} selected{{end}}>{{$.S.type_sprinkler}}</option>
+                    <option value="mist"{{if eq $z.Type "mist"}} selected{{end}}>{{$.S.type_mist}}</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-500 mb-1">{{$.S.step2_zone_max}}</label>
+                  <input type="number" name="zone_{{$z.ID}}_max" value="{{divInt $z.MaxSecs 60}}" min="1" max="240"
+                    inputmode="numeric"
+                    class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                </div>
+              </div>
             </div>
-          </div>
+          </details>
           {{end}}
         </div>
         <button type="submit"
@@ -630,6 +644,48 @@
       </form>
     </div>
     {{end}}
+
+    <!-- Backup & Restore -->
+    <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">{{.S.backup_title}}</h2>
+    <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 space-y-5 mb-6">
+
+      {{if .ImportErr}}
+      <div class="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+        <span class="text-lg flex-shrink-0">⚠️</span>
+        <p class="text-sm text-red-700">
+          {{if eq .ImportErr "incomplete"}}{{.S.backup_import_err_incomplete}}{{else}}{{.S.backup_import_err_invalid}}{{end}}
+        </p>
+      </div>
+      {{end}}
+
+      <!-- Export -->
+      <div>
+        <p class="text-sm font-semibold text-slate-800 mb-1">{{.S.backup_export_btn}}</p>
+        <p class="text-xs text-slate-400 mb-3">{{.S.backup_export_desc}}</p>
+        <a href="/api/export/config"
+          class="inline-flex w-full items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors text-sm">
+          ⬇ {{.S.backup_export_btn}}
+        </a>
+      </div>
+
+      <hr class="border-slate-100">
+
+      <!-- Import -->
+      <div>
+        <p class="text-sm font-semibold text-slate-800 mb-1">{{.S.backup_import_btn}}</p>
+        <p class="text-xs text-slate-400 mb-3">{{.S.backup_import_desc}}</p>
+        <form method="POST" action="/api/import/config" enctype="multipart/form-data"
+          onsubmit="return confirm('{{.S.settings_reset_confirm}}')">
+          <input type="file" name="config_file" accept=".json" required
+            class="block w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 transition-colors mb-3">
+          <button type="submit"
+            class="inline-flex w-full items-center justify-center gap-2 border-2 border-emerald-500 text-emerald-700 hover:bg-emerald-50 active:bg-emerald-100 font-semibold py-2.5 px-4 rounded-xl transition-colors text-sm">
+            ⬆ {{.S.backup_import_btn}}
+          </button>
+        </form>
+      </div>
+
+    </div>
 
     <!-- Hardware -->
     <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">{{.S.settings_hw_title}}</h2>

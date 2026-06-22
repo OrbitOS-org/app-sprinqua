@@ -175,6 +175,8 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /setup/save", s.handleSettingsSave)
 	mux.HandleFunc("POST /setup/zones", s.handleZonesSave)
 	mux.HandleFunc("POST /setup/reset", s.handleSetupReset)
+	mux.HandleFunc("GET /api/export/config", s.handleExportConfig)
+	mux.HandleFunc("POST /api/import/config", s.handleImportConfig)
 	mux.HandleFunc("GET /setup/wizard", s.handleSetupWizard)
 	mux.HandleFunc("GET /setup/channels", s.handleSetupChannels)
 	mux.HandleFunc("POST /setup/step/1", s.handleSetupStep1)

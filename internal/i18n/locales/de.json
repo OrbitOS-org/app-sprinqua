@@ -268,5 +268,12 @@
   "hw_check_unknown": "Unbekanntes Gerät",
   "winter_mode_managed_by_ha": "Wird von Home Assistant im passiven Modus verwaltet.",
   "mqtt_status_connected": "Verbunden",
-  "mqtt_status_disconnected": "Getrennt"
+  "mqtt_status_disconnected": "Getrennt",
+  "backup_title": "Sicherung & Wiederherstellung",
+  "backup_export_desc": "Lade eine Sicherung aller deiner Einstellungen, Programme und Zonen herunter.",
+  "backup_export_btn": "Exportieren",
+  "backup_import_desc": "Stelle aus einer zuvor exportierten Sicherung wieder her. Dadurch wird die aktuelle Konfiguration ersetzt.",
+  "backup_import_btn": "Importieren",
+  "backup_import_err_invalid": "Ungültige Datei — Konfiguration konnte nicht gelesen werden.",
+  "backup_import_err_incomplete": "Unvollständige Sicherung — der Einrichtungsassistent war nicht abgeschlossen."
 }

@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -104,6 +105,7 @@ type settingsData struct {
 	ZoneCount       int
 	Zones           []config.Zone
 	SupportedLangs  []langOption
+	ImportErr       string // "invalid" | "incomplete" | ""
 }
 
 var langLabels = map[string]string{
@@ -151,6 +153,7 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		ZoneCount:       len(s.cfg.Zones),
 		Zones:           s.cfg.Zones,
 		SupportedLangs:  langs,
+		ImportErr:       r.URL.Query().Get("import_err"),
 	})
 }
 
@@ -1191,6 +1194,67 @@ func (s *Server) saveAsync() {
 			logger.Errorf(logTag, "async save: %v", err)
 		}
 	}()
+}
+
+// ── Backup / Restore ─────────────────────────────────────────────────────────
+
+func (s *Server) handleExportConfig(w http.ResponseWriter, r *http.Request) {
+	data, err := json.MarshalIndent(s.cfg, "", "  ")
+	if err != nil {
+		http.Error(w, "marshal failed", http.StatusInternalServerError)
+		return
+	}
+	filename := "sprinqua-config-" + time.Now().Format("2006-01-02") + ".json"
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)
+	w.Write(data)
+}
+
+func (s *Server) handleImportConfig(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseMultipartForm(1 << 20); err != nil { // 1 MB limit
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	file, _, err := r.FormFile("config_file")
+	if err != nil {
+		http.Error(w, "missing file", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	var imported config.Config
+	if err := json.NewDecoder(file).Decode(&imported); err != nil {
+		http.Redirect(w, r, "/setup?import_err=invalid", http.StatusFound)
+		return
+	}
+	if !imported.SetupDone {
+		http.Redirect(w, r, "/setup?import_err=incomplete", http.StatusFound)
+		return
+	}
+
+	*s.cfg = imported
+
+	if err := s.cfg.Save(s.dataDir); err != nil {
+		logger.Errorf(logTag, "import save: %v", err)
+		http.Error(w, "save failed", http.StatusInternalServerError)
+		return
+	}
+
+	// Re-initialize board and engine with imported zones.
+	if b := board.Find(s.cfg.Board); b != nil {
+		s.board = b
+		eng := zone.New(s.gpio, b, s.cfg.Zones, s.cfg.IsExclusiveMode())
+		eng.Init()
+		eng.SetHistory(s.hist)
+		s.engine = eng
+		if s.sched != nil {
+			s.sched.SetEngine(eng)
+		}
+		s.mqttClient.Connect(s.cfg.MQTT, s.cfg.Zones, eng, s.hist)
+	}
+	s.sched.SetPaused(s.cfg.MQTT.IsPassive() || s.cfg.WinterMode)
+
+	http.Redirect(w, r, "/setup", http.StatusFound)
 }
 
 // ── History ───────────────────────────────────────────────────────────────────
