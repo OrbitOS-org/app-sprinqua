@@ -9,12 +9,12 @@ import (
 const filename = "config.json"
 
 type Config struct {
-	SetupDone     bool       `json:"setup_done"`
-	Board         string     `json:"board"`
-	Zones         []Zone     `json:"zones"`
-	MQTT          MQTTConfig `json:"mqtt"`
-	Schedules     []Schedule `json:"schedules"`
-	TimeFormat    string     `json:"time_format"` // "24h" | "12h"
+	SetupDone     bool                `json:"setup_done"`
+	Board         string              `json:"board"`
+	Zones         []Zone              `json:"zones"`
+	MQTT          MQTTConfig          `json:"mqtt"`
+	Schedules     []Schedule          `json:"schedules"`
+	TimeFormat    string              `json:"time_format"` // "24h" | "12h"
 	SmartWatering SmartWateringConfig `json:"smart_watering,omitempty"`
 	WinterMode    bool                `json:"winter_mode,omitempty"`
 }
@@ -120,8 +120,8 @@ type Zone struct {
 	ID        int    `json:"id"`
 	Name      string `json:"name"`
 	Channel   int    `json:"channel"`
-	Type      string `json:"type"`      // drip | sprinkler | mist
-	MaxSecs   int    `json:"max_secs"`  // safety auto-off in seconds
+	Type      string `json:"type"`                 // drip | sprinkler | mist
+	MaxSecs   int    `json:"max_secs"`             // safety auto-off in seconds
 	PulseSecs int    `json:"pulse_secs,omitempty"` // manual pulse duration; 0 → default 5 min
 	Enabled   bool   `json:"enabled"`
 }
@@ -142,15 +142,17 @@ func (z Zone) EffectivePulseSecs() int {
 }
 
 type SmartWateringConfig struct {
-	Enabled         bool        `json:"enabled"`
-	SkipEnabled     bool        `json:"skip_enabled"`      // skip entire session on rain/frost; migrated to true for existing configs
-	Lat             float64     `json:"lat"`
-	Lon             float64     `json:"lon"`
-	RainThresholdMM float64     `json:"rain_threshold_mm"` // skip if daily rain >= this; 0 → default 2mm
-	FrostThresholdC float64     `json:"frost_threshold_c,omitempty"` // skip if today's min temp < this; 0 = disabled
-	Method          string      `json:"method,omitempty"`  // "" | "manual" | "monthly" | "zimmerman" | "eto"
-	ManualPct       float64     `json:"manual_pct,omitempty"`
-	MonthlyPct      [12]float64 `json:"monthly_pct"`
+	Enabled                  bool        `json:"enabled"`
+	SkipEnabled              bool        `json:"skip_enabled"` // skip entire session on rain/frost; migrated to true for existing configs
+	Lat                      float64     `json:"lat"`
+	Lon                      float64     `json:"lon"`
+	RainThresholdMM          float64     `json:"rain_threshold_mm"`                      // skip if daily rain >= this; 0 → default 2mm
+	FrostThresholdC          float64     `json:"frost_threshold_c,omitempty"`            // skip if today's min temp < this; 0 = disabled
+	RainDelayDays            int         `json:"rain_delay_days,omitempty"`              // skip all programs N days after significant rain; 0 = off
+	RainDelayClearedRainDate string      `json:"rain_delay_cleared_rain_date,omitempty"` // ISO date of the rain event last dismissed via "clear"; newer rain still triggers a fresh delay
+	Method                   string      `json:"method,omitempty"`                       // "" | "manual" | "monthly" | "zimmerman" | "eto"
+	ManualPct                float64     `json:"manual_pct,omitempty"`
+	MonthlyPct               [12]float64 `json:"monthly_pct"`
 
 	// Zimmerman parameters (metric: °C and mm)
 	ZimmBT float64 `json:"zimm_bt,omitempty"` // baseline temperature °C, default 21
@@ -162,7 +164,7 @@ type SmartWateringConfig struct {
 
 	// ETo parameters
 	Altitude                float64 `json:"altitude,omitempty"`
-	EToBaseline             float64 `json:"eto_baseline,omitempty"`              // mean daily ETo mm/day over last 12 months
+	EToBaseline             float64 `json:"eto_baseline,omitempty"`               // mean daily ETo mm/day over last 12 months
 	EToBaselineCalculatedAt string  `json:"eto_baseline_calculated_at,omitempty"` // ISO date of last calculation
 }
 

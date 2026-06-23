@@ -6,9 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"sort"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -63,9 +63,9 @@ func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
 
 type step1Data struct {
 	basePage
-	Boards      []*board.Board
-	HwModel     string // raw model string from Gravity RT
-	HwOK        bool   // true only if a Raspberry Pi was detected
+	Boards  []*board.Board
+	HwModel string // raw model string from Gravity RT
+	HwOK    bool   // true only if a Raspberry Pi was detected
 }
 
 type step2Data struct {
@@ -93,19 +93,19 @@ type langOption struct {
 
 type settingsData struct {
 	basePage
-	MQTT            config.MQTTConfig
-	TimeFormat      string
-	WinterMode      bool
-	PassiveMode     bool
-	MQTTConnected   bool
-	SmartWatering   config.SmartWateringConfig
-	EToCalculating  bool
-	SetupDone       bool
-	BoardName       string
-	ZoneCount       int
-	Zones           []config.Zone
-	SupportedLangs  []langOption
-	ImportErr       string // "invalid" | "incomplete" | ""
+	MQTT           config.MQTTConfig
+	TimeFormat     string
+	WinterMode     bool
+	PassiveMode    bool
+	MQTTConnected  bool
+	SmartWatering  config.SmartWateringConfig
+	EToCalculating bool
+	SetupDone      bool
+	BoardName      string
+	ZoneCount      int
+	Zones          []config.Zone
+	SupportedLangs []langOption
+	ImportErr      string // "invalid" | "incomplete" | ""
 }
 
 var langLabels = map[string]string{
@@ -140,20 +140,20 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	s.etoMu.Unlock()
 
 	s.render(w, "settings", settingsData{
-		basePage:        s.page(r),
-		MQTT:            s.cfg.MQTT,
-		TimeFormat:      tf,
-		WinterMode:      s.cfg.WinterMode,
-		PassiveMode:     s.cfg.MQTT.IsPassive(),
-		MQTTConnected:   s.mqttClient.IsConnected(),
-		SmartWatering:   sw,
-		EToCalculating:  etoCalc,
-		SetupDone:       s.cfg.SetupDone,
-		BoardName:       boardName,
-		ZoneCount:       len(s.cfg.Zones),
-		Zones:           s.cfg.Zones,
-		SupportedLangs:  langs,
-		ImportErr:       r.URL.Query().Get("import_err"),
+		basePage:       s.page(r),
+		MQTT:           s.cfg.MQTT,
+		TimeFormat:     tf,
+		WinterMode:     s.cfg.WinterMode,
+		PassiveMode:    s.cfg.MQTT.IsPassive(),
+		MQTTConnected:  s.mqttClient.IsConnected(),
+		SmartWatering:  sw,
+		EToCalculating: etoCalc,
+		SetupDone:      s.cfg.SetupDone,
+		BoardName:      boardName,
+		ZoneCount:      len(s.cfg.Zones),
+		Zones:          s.cfg.Zones,
+		SupportedLangs: langs,
+		ImportErr:      r.URL.Query().Get("import_err"),
 	})
 }
 
@@ -254,29 +254,43 @@ func (s *Server) handleSettingsSave(w http.ResponseWriter, r *http.Request) {
 	zimmWP, _ := strconv.ParseFloat(r.FormValue("zimm_wp"), 64)
 	altitude, _ := strconv.ParseFloat(r.FormValue("sw_altitude"), 64)
 
-	// Preserve calculated ETo baseline across settings saves
+	// Preserve calculated ETo baseline and rain delay override across settings saves
 	prevBaseline := s.cfg.SmartWatering.EToBaseline
 	prevBaselineAt := s.cfg.SmartWatering.EToBaselineCalculatedAt
+	prevRainDelayCleared := s.cfg.SmartWatering.RainDelayClearedRainDate
+
+	swRainDelayDays, _ := strconv.Atoi(r.FormValue("sw_rain_delay_days"))
+	if swRainDelayDays < 0 {
+		swRainDelayDays = 0
+	}
+	if swRainDelayDays > 14 {
+		swRainDelayDays = 14
+	}
+	if swRainDelayDays == 0 {
+		prevRainDelayCleared = ""
+	}
 
 	s.cfg.SmartWatering = config.SmartWateringConfig{
-		Enabled:                 swEnabled,
-		SkipEnabled:             swSkipEnabled,
-		Lat:                     swLat,
-		Lon:                     swLon,
-		RainThresholdMM:         swThresh,
-		FrostThresholdC:         swFrost,
-		Method:                  swMethod,
-		ManualPct:               swManualPct,
-		MonthlyPct:              swMonthly,
-		ZimmBT:                  zimmBT,
-		ZimmBH:                  zimmBH,
-		ZimmBP:                  zimmBP,
-		ZimmWT:                  zimmWT,
-		ZimmWH:                  zimmWH,
-		ZimmWP:                  zimmWP,
-		Altitude:                altitude,
-		EToBaseline:             prevBaseline,
-		EToBaselineCalculatedAt: prevBaselineAt,
+		Enabled:                  swEnabled,
+		SkipEnabled:              swSkipEnabled,
+		Lat:                      swLat,
+		Lon:                      swLon,
+		RainThresholdMM:          swThresh,
+		FrostThresholdC:          swFrost,
+		RainDelayDays:            swRainDelayDays,
+		RainDelayClearedRainDate: prevRainDelayCleared,
+		Method:                   swMethod,
+		ManualPct:                swManualPct,
+		MonthlyPct:               swMonthly,
+		ZimmBT:                   zimmBT,
+		ZimmBH:                   zimmBH,
+		ZimmBP:                   zimmBP,
+		ZimmWT:                   zimmWT,
+		ZimmWH:                   zimmWH,
+		ZimmWP:                   zimmWP,
+		Altitude:                 altitude,
+		EToBaseline:              prevBaseline,
+		EToBaselineCalculatedAt:  prevBaselineAt,
 	}
 
 	if err := s.cfg.Save(s.dataDir); err != nil {
@@ -589,18 +603,30 @@ func (s *Server) handleSetupStep3(w http.ResponseWriter, r *http.Request) {
 
 type dashboardData struct {
 	basePage
-	Zones            []zone.State
-	WinterMode       bool
-	PassiveMode      bool
-	HasNextRun       bool
-	NextRunName      string
-	NextRunWhen      string
-	NextSwBadge      string
-	NextHasAdj       bool
-	NextSwEstimate   bool
-	NextTotalRunMins int
-	IsRunning        bool
-	RunningSchedName string
+	Zones              []zone.State
+	WinterMode         bool
+	PassiveMode        bool
+	RainDelayActive    bool
+	RainDelayDaysLeft  int
+	HasNextRun         bool
+	NextRunName        string
+	NextRunWhen        string
+	NextSwBadge        string
+	NextHasAdj         bool
+	NextSwEstimate     bool
+	NextTotalRunMins   int
+	IsRunning          bool
+	RunningSchedName   string
+	RunningSwBadge     string
+	RunningHasAdj      bool
+	RunningSwEstimate  bool
+	RunningTotalMins   int
+	HasWeather         bool
+	WeatherTempMinC    float64
+	WeatherTempMaxC    float64
+	WeatherHumidityPct float64
+	WeatherWindKmh     float64
+	WeatherRainMM      float64
 }
 
 func scheduleDisplayName(sc config.Schedule, strs map[string]string) string {
@@ -608,6 +634,19 @@ func scheduleDisplayName(sc config.Schedule, strs map[string]string) string {
 		return sc.Name
 	}
 	return fmt.Sprintf(strs["sched_program_num"], sc.ID)
+}
+
+// fetchYesterdayFor returns yesterday's weather actuals when the configured method needs
+// them for an estimate (zimmerman/eto), or nil otherwise.
+func fetchYesterdayFor(sw config.SmartWateringConfig) *weather.DailyData {
+	if !sw.Enabled || sw.Lat == 0 || (sw.Method != "zimmerman" && sw.Method != "eto") {
+		return nil
+	}
+	d, err := weather.FetchYesterday(sw.Lat, sw.Lon)
+	if err != nil {
+		return nil
+	}
+	return d
 }
 
 // computeScheduleSWDisplay returns smart-watering badge and effective total run minutes for UI.
@@ -687,12 +726,42 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		PassiveMode: s.cfg.MQTT.IsPassive(),
 	}
 
+	sw := s.cfg.SmartWatering
+	if sw.Enabled && sw.SkipEnabled && sw.RainDelayDays > 0 && sw.Lat != 0 {
+		if delay, err := weather.RainDelayStatus(sw, time.Now()); err == nil && delay.Active {
+			data.RainDelayActive = true
+			data.RainDelayDaysLeft = delay.DaysLeft
+		}
+	}
+
+	if sw.Enabled && sw.Lat != 0 {
+		if res, err := weather.FetchToday(sw.Lat, sw.Lon); err == nil {
+			data.HasWeather = true
+			data.WeatherTempMinC = res.TempMinC
+			data.WeatherTempMaxC = res.TempMaxC
+			data.WeatherHumidityPct = res.HumidityPct
+			data.WeatherWindKmh = res.WindKmh
+			data.WeatherRainMM = res.RainMM
+		}
+	}
+
 	if s.sched != nil {
 		if id, ok := s.sched.RunningID(); ok {
 			for _, sc := range s.cfg.Schedules {
 				if sc.ID == id {
 					data.IsRunning = true
 					data.RunningSchedName = scheduleDisplayName(sc, pg.S)
+					if s.sched.RunningManual() {
+						// Run now always uses raw durations — showing the SW
+						// badge here would wrongly imply an adjustment is applied.
+						data.RunningTotalMins = sc.TotalRunMins()
+					} else {
+						_, badge, hasAdj, est, totalRun := computeScheduleSWDisplay(sc, sw, fetchYesterdayFor(sw))
+						data.RunningSwBadge = badge
+						data.RunningHasAdj = hasAdj
+						data.RunningSwEstimate = est
+						data.RunningTotalMins = totalRun
+					}
 					break
 				}
 			}
@@ -701,14 +770,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 
 	if !data.IsRunning && !data.WinterMode && !data.PassiveMode {
 		if sc, when, ok := scheduler.NextRunGlobal(s.cfg.Schedules); ok {
-			sw := s.cfg.SmartWatering
-			var yesterday *weather.DailyData
-			if sw.Enabled && sw.Lat != 0 && (sw.Method == "zimmerman" || sw.Method == "eto") {
-				if d, err := weather.FetchYesterday(sw.Lat, sw.Lon); err == nil {
-					yesterday = d
-				}
-			}
-			_, badge, hasAdj, est, totalRun := computeScheduleSWDisplay(sc, sw, yesterday)
+			_, badge, hasAdj, est, totalRun := computeScheduleSWDisplay(sc, sw, fetchYesterdayFor(sw))
 			data.HasNextRun = true
 			data.NextRunName = scheduleDisplayName(sc, pg.S)
 			data.NextRunWhen = formatNextRunWhen(when, use12h, pg.S)
@@ -870,26 +932,26 @@ type zoneStepView struct {
 	ZoneID        int
 	Name          string
 	DurMins       int
-	AdjDurMins    int  // effective duration after smart watering multiplier; 0 = same as DurMins
-	HasAdj        bool // true when a smart watering adjustment applies
-	SoakAfterMins int  // pause after this zone before the next
+	AdjDurMins    int    // effective duration after smart watering multiplier; 0 = same as DurMins
+	HasAdj        bool   // true when a smart watering adjustment applies
+	SoakAfterMins int    // pause after this zone before the next
 	Color         string // persistent hex color matching the zone
 }
 
 type scheduleView struct {
 	config.Schedule
-	ZoneSteps      []zoneStepView
-	TotalMins      int // irrigation only
-	TotalRunMins   int // irrigation + soak pauses
-	AdjTotalMins   int // adjusted irrigation total; 0 = same as TotalMins
-	AdjTotalRunMins int // adjusted total including soak pauses
-	HasAdj       bool   // true when SW adjustment differs from 1× (deterministic or estimated)
-	SwEstimate   bool   // true when adjustment is a weather-based estimate (~×N)
-	SwBadge      string // "×1.5" deterministic, "~×0.8" estimated, "~" if unknown, "" if SW off
-	NextRun      string
-	DisplayTime  string
-	Running      bool // this program is the one currently mid-run
-	OtherRunning bool // a different program is mid-run, so Run now is blocked
+	ZoneSteps       []zoneStepView
+	TotalMins       int    // irrigation only
+	TotalRunMins    int    // irrigation + soak pauses
+	AdjTotalMins    int    // adjusted irrigation total; 0 = same as TotalMins
+	AdjTotalRunMins int    // adjusted total including soak pauses
+	HasAdj          bool   // true when SW adjustment differs from 1× (deterministic or estimated)
+	SwEstimate      bool   // true when adjustment is a weather-based estimate (~×N)
+	SwBadge         string // "×1.5" deterministic, "~×0.8" estimated, "~" if unknown, "" if SW off
+	NextRun         string
+	DisplayTime     string
+	Running         bool // this program is the one currently mid-run
+	OtherRunning    bool // a different program is mid-run, so Run now is blocked
 }
 
 type scheduleFormData struct {
@@ -971,13 +1033,13 @@ func (s *Server) buildSchedulePage(r *http.Request) schedulePageData {
 			TotalRunMins:    sc.TotalRunMins(),
 			AdjTotalMins:    adjTotal,
 			AdjTotalRunMins: adjRunTotal,
-			HasAdj:       hasAdj,
-			SwEstimate:   swEstimate,
-			SwBadge:      swBadge,
-			NextRun:      nextStr,
-			DisplayTime:  formatStartTime(sc.StartTime, use12h),
-			Running:      sc.ID == runningID,
-			OtherRunning: anyRunning && sc.ID != runningID,
+			HasAdj:          hasAdj,
+			SwEstimate:      swEstimate,
+			SwBadge:         swBadge,
+			NextRun:         nextStr,
+			DisplayTime:     formatStartTime(sc.StartTime, use12h),
+			Running:         sc.ID == runningID,
+			OtherRunning:    anyRunning && sc.ID != runningID,
 		}
 	}
 
@@ -1437,11 +1499,11 @@ type historyStats struct {
 
 type historyPageData struct {
 	basePage
-	Stats          historyStats
-	Entries        []historyEntryView
-	ChartRows      []historyChartRow
-	ChartRuler     [5]string
-	ChartRangeStr  string
+	Stats         historyStats
+	Entries       []historyEntryView
+	ChartRows     []historyChartRow
+	ChartRuler    [5]string
+	ChartRangeStr string
 }
 
 func (s *Server) handleHistory(w http.ResponseWriter, r *http.Request) {
@@ -1474,6 +1536,10 @@ func (s *Server) handleHistory(w http.ResponseWriter, r *http.Request) {
 			switch e.Trigger {
 			case history.SkipFrost:
 				trigLabel = pg.S["hist_trigger_skipped_frost"]
+			case history.SkipRainDelay:
+				trigLabel = pg.S["hist_trigger_skipped_rain_delay"]
+			case history.SkipRain:
+				trigLabel = pg.S["hist_trigger_skipped_sw"]
 			default:
 				trigLabel = pg.S["hist_trigger_skipped_sw"]
 			}
@@ -1706,9 +1772,9 @@ func (s *Server) handleHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.render(w, "history", historyPageData{
-		basePage:   pg,
-		Stats:      historyStats{DurStr: durStr, Runs: runs, Skipped: skipped, TopZone: topZone},
-		Entries:    views,
+		basePage:      pg,
+		Stats:         historyStats{DurStr: durStr, Runs: runs, Skipped: skipped, TopZone: topZone},
+		Entries:       views,
 		ChartRows:     chartRows,
 		ChartRuler:    ruler,
 		ChartRangeStr: chartRangeStr,
@@ -1784,6 +1850,17 @@ func (s *Server) handleWeatherStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var rainDelayLine, clearBtn string
+	if sw.SkipEnabled && sw.RainDelayDays > 0 {
+		if delay, err := weather.RainDelayStatus(sw, time.Now()); err == nil && delay.Active {
+			rainDelayLine = fmt.Sprintf(`<p class="text-xs text-amber-700 font-medium mt-1">%s</p>`,
+				fmt.Sprintf(str["sw_status_rain_delay"], delay.DaysLeft))
+			clearBtn = fmt.Sprintf(`<button hx-post="/api/rain-delay/clear" hx-swap="outerHTML" hx-target="#sw-status"
+    class="text-xs font-semibold text-amber-700 hover:text-amber-900 underline flex-shrink-0">%s</button>`,
+				str["sw_rain_delay_clear"])
+		}
+	}
+
 	res, err := weather.FetchToday(sw.Lat, sw.Lon)
 	if err != nil {
 		logger.Warnf(logTag, "weather status: %v", err)
@@ -1798,7 +1875,7 @@ func (s *Server) handleWeatherStatus(w http.ResponseWriter, r *http.Request) {
 	threshold := sw.EffectiveThreshold()
 	allowed := res.RainMM < threshold
 
-	todayLine := fmt.Sprintf(str["sw_status_today"], res.RainMM)
+	todayLine := fmt.Sprintf(str["sw_status_today"], res.TempMinC, res.TempMaxC, res.HumidityPct, res.WindKmh, res.RainMM)
 	var statusLine, icon, borderCls, textCls string
 	if allowed {
 		icon = "☀️"
@@ -1811,14 +1888,39 @@ func (s *Server) handleWeatherStatus(w http.ResponseWriter, r *http.Request) {
 		textCls = "text-amber-700"
 		statusLine = fmt.Sprintf(str["sw_status_skip"], threshold)
 	}
+	if rainDelayLine != "" {
+		borderCls = "border-amber-200 bg-amber-50"
+		icon = "🌧️"
+	}
 
 	fmt.Fprintf(w, `<div id="sw-status" class="rounded-xl border %s px-4 py-3 flex items-center gap-3">
   <span class="text-2xl flex-shrink-0">%s</span>
   <div class="flex-1 min-w-0">
     <p class="text-sm font-semibold text-slate-800">%s</p>
     <p class="text-xs %s font-medium mt-0.5">%s</p>
+    %s
   </div>
+  %s
   <button hx-get="/api/weather" hx-swap="outerHTML" hx-target="#sw-status"
     class="text-slate-400 hover:text-slate-600 text-lg flex-shrink-0 px-1">↻</button>
-</div>`, borderCls, icon, todayLine, textCls, statusLine)
+</div>`, borderCls, icon, todayLine, textCls, statusLine, rainDelayLine, clearBtn)
+}
+
+// handleRainDelayClear dismisses the rain event currently driving the delay.
+// Any rain that falls after that event still triggers a fresh delay.
+func (s *Server) handleRainDelayClear(w http.ResponseWriter, r *http.Request) {
+	sw := s.cfg.SmartWatering
+	delay, err := weather.RainDelayStatus(sw, time.Now())
+	if err != nil || !delay.Active {
+		s.handleWeatherStatus(w, r)
+		return
+	}
+
+	s.cfg.SmartWatering.RainDelayClearedRainDate = delay.RainDate.Format("2006-01-02")
+	if err := s.cfg.Save(s.dataDir); err != nil {
+		logger.Errorf(logTag, "clear rain delay: %v", err)
+		http.Error(w, "save failed", http.StatusInternalServerError)
+		return
+	}
+	s.handleWeatherStatus(w, r)
 }

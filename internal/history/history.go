@@ -17,8 +17,9 @@ const (
 	Schedule  Trigger = "schedule"
 	Pulse     Trigger = "pulse"
 	MQTT      Trigger = "mqtt"
-	SkipRain  Trigger = "skip_rain"
-	SkipFrost Trigger = "skip_frost"
+	SkipRain      Trigger = "skip_rain"
+	SkipFrost     Trigger = "skip_frost"
+	SkipRainDelay Trigger = "skip_rain_delay"
 
 	maxEntries = 500
 )

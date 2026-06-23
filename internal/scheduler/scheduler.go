@@ -33,16 +33,17 @@ var (
 )
 
 type Scheduler struct {
-	mu        sync.Mutex
-	cfg       *config.Config
-	engine    *zone.Engine
-	hist      *history.Store
-	lastRun   map[int]time.Time
-	runningID int                // ID of the schedule currently mid-run, or 0 if none
-	cancel    context.CancelFunc // cancels the current run; nil if none is running
-	done      chan struct{}      // closed when the current run's goroutine finishes
-	stopCh    chan struct{}
-	paused    bool
+	mu            sync.Mutex
+	cfg           *config.Config
+	engine        *zone.Engine
+	hist          *history.Store
+	lastRun       map[int]time.Time
+	runningID     int                // ID of the schedule currently mid-run, or 0 if none
+	runningManual bool               // true if the current run was started via RunNow (raw durations, no SW adjustment)
+	cancel        context.CancelFunc // cancels the current run; nil if none is running
+	done          chan struct{}      // closed when the current run's goroutine finishes
+	stopCh        chan struct{}
+	paused        bool
 }
 
 func New(cfg *config.Config, eng *zone.Engine) *Scheduler {
@@ -69,6 +70,16 @@ func (s *Scheduler) RunningID() (id int, ok bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.runningID, s.runningID != 0
+}
+
+// RunningManual reports whether the in-progress run (if any) was started via
+// RunNow rather than fired by the schedule's own trigger time. RunNow always
+// uses raw zone durations regardless of Smart Watering, so the UI should hide
+// the adjustment badge while a manual run is active.
+func (s *Scheduler) RunningManual() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.runningManual
 }
 
 // StopRun cancels the in-progress run, but only if it's this schedule: the
@@ -103,9 +114,10 @@ func (s *Scheduler) StopRun(id int) error {
 
 // startRun records id as the (sole) running schedule and returns a context
 // that's canceled when StopRun(id) is called. Caller must hold s.mu.
-func (s *Scheduler) startRun(id int) context.Context {
+func (s *Scheduler) startRun(id int, manual bool) context.Context {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.runningID = id
+	s.runningManual = manual
 	s.cancel = cancel
 	s.done = make(chan struct{})
 	return ctx
@@ -115,6 +127,7 @@ func (s *Scheduler) finishRun(id int) {
 	s.mu.Lock()
 	if s.runningID == id {
 		s.runningID = 0
+		s.runningManual = false
 		s.cancel = nil
 		if s.done != nil {
 			close(s.done)
@@ -153,7 +166,7 @@ func (s *Scheduler) RunNow(id int) error {
 		s.mu.Unlock()
 		return ErrScheduleNotFound
 	}
-	ctx := s.startRun(id)
+	ctx := s.startRun(id, true)
 	eng := s.engine
 	hist := s.hist
 	s.mu.Unlock()
@@ -242,7 +255,7 @@ func (s *Scheduler) tick(now time.Time) {
 			continue // some program (clock-triggered or manual) is already mid-run
 		}
 		s.lastRun[sched.ID] = minute
-		ctx := s.startRun(sched.ID)
+		ctx := s.startRun(sched.ID, false)
 		eng := s.engine
 		hist := s.hist
 		sw := s.cfg.SmartWatering
@@ -255,6 +268,17 @@ func (s *Scheduler) tick(now time.Time) {
 
 func runSchedule(ctx context.Context, eng *zone.Engine, sched config.Schedule, hist *history.Store, sw config.SmartWateringConfig) {
 	if sw.Enabled && sw.SkipEnabled && sw.Lat != 0 {
+		if sw.RainDelayDays > 0 {
+			if delay, err := weather.RainDelayStatus(sw, time.Now()); err != nil {
+				logger.Warnf(logTag, "schedule %d: rain delay check failed: %v", sched.ID, err)
+			} else if delay.Active {
+				logger.Infof(logTag, "schedule %d skipped: rain delay (%d day(s) left after rain on %s)",
+					sched.ID, delay.DaysLeft, delay.RainDate.Format("2006-01-02"))
+				skipAll(hist, sched, history.SkipRainDelay)
+				return
+			}
+		}
+
 		res, err := weather.FetchToday(sw.Lat, sw.Lon)
 		if err != nil {
 			logger.Warnf(logTag, "schedule %d: weather fetch failed: %v", sched.ID, err)

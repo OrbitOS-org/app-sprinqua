@@ -195,6 +195,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 
 	// Smart Watering
 	mux.HandleFunc("GET /api/weather", s.handleWeatherStatus)
+	mux.HandleFunc("POST /api/rain-delay/clear", s.handleRainDelayClear)
 	mux.HandleFunc("POST /api/eto-baseline/recalculate", s.handleEToBaselineRecalculate)
 
 	// History

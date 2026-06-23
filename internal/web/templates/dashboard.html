@@ -25,7 +25,7 @@
       <div class="flex items-center gap-0.5">
         <a href="/dashboard"
           class="text-xs px-2 py-2 rounded-lg transition-colors {{if eq .ActiveTab "zones"}}font-bold text-slate-800{{else}}text-slate-400 hover:text-slate-600{{end}}">
-          {{.S.zones_title}}
+          {{.S.nav_dashboard}}
         </a>
         <a href="/schedule"
           class="text-xs px-2 py-2 rounded-lg transition-colors {{if eq .ActiveTab "schedule"}}font-bold text-slate-800{{else}}text-slate-400 hover:text-slate-600{{end}}">
@@ -44,6 +44,44 @@
   </header>
 
   <main class="max-w-2xl mx-auto px-4 sm:px-6 py-5">
+
+    {{if .HasWeather}}
+    <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 mb-4">
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <span class="text-3xl flex-shrink-0">{{if gt .WeatherRainMM 0.0}}🌧️{{else}}☀️{{end}}</span>
+          <div class="min-w-0">
+            <p class="text-2xl font-bold text-slate-800 leading-none">{{printf "%.0f–%.0f°C" .WeatherTempMinC .WeatherTempMaxC}}</p>
+            <p class="text-xs text-slate-400 mt-1">{{.S.dash_next_today}}</p>
+          </div>
+        </div>
+        <div class="text-right flex-shrink-0">
+          <p class="text-2xl font-bold text-slate-800 leading-none" id="last-update"></p>
+          <p class="text-xs text-slate-400 mt-1" id="last-update-date"></p>
+        </div>
+      </div>
+      <div class="border-t border-slate-100 mt-3 pt-3 flex items-center gap-4 text-xs text-slate-500">
+        <span class="flex items-center gap-1">💧 {{printf "%.0f%%" .WeatherHumidityPct}}</span>
+        <span class="flex items-center gap-1">💨 {{printf "%.0f km/h" .WeatherWindKmh}}</span>
+        <span class="flex items-center gap-1">🌧️ {{printf "%.1f mm" .WeatherRainMM}}</span>
+      </div>
+    </div>
+    {{else}}
+    <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 mb-4 text-center">
+      <p class="text-2xl font-bold text-slate-800 leading-none" id="last-update"></p>
+      <p class="text-xs text-slate-400 mt-1" id="last-update-date"></p>
+    </div>
+    {{end}}
+
+    {{if .RainDelayActive}}
+    <div class="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 mb-4">
+      <span class="text-xl">🌧️</span>
+      <div>
+        <p class="text-sm font-semibold text-amber-800">{{.S.dash_rain_delay_title}}</p>
+        <p class="text-xs text-amber-600 mt-0.5">{{printf .S.dash_rain_delay_desc .RainDelayDaysLeft}}</p>
+      </div>
+    </div>
+    {{end}}
 
     {{if and .WinterMode (not .PassiveMode)}}
     <div class="flex items-center gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 mb-4">
@@ -68,8 +106,16 @@
     {{if .IsRunning}}
     <a href="/schedule"
       class="flex items-center gap-3 rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 mb-4 hover:bg-emerald-100 transition-colors">
-      <span class="text-xl">▶</span>
-      <p class="text-sm font-semibold text-emerald-800">{{.RunningSchedName}}</p>
+      <span class="text-xl flex-shrink-0">▶</span>
+      <div class="flex-1 min-w-0 flex items-start justify-between gap-3">
+        <p class="text-sm font-semibold text-emerald-800 min-w-0">{{.RunningSchedName}}</p>
+        <p class="text-xs text-emerald-700 flex items-center justify-end gap-1 flex-shrink-0">
+          {{if .RunningSwBadge}}<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full
+            {{if and .RunningHasAdj (not .RunningSwEstimate)}}bg-emerald-100 text-emerald-700{{else}}bg-amber-100 text-amber-700{{end}}"
+            {{if .RunningSwEstimate}}title="{{.S.sched_sw_est_hint}}"{{end}}>⚡ {{.RunningSwBadge}}</span><span class="text-emerald-300">·</span>{{end}}
+          {{.RunningTotalMins}} {{.S.sched_form_mins}}
+        </p>
+      </div>
     </a>
     {{else if .HasNextRun}}
     <a href="/schedule"
@@ -89,7 +135,6 @@
 
     <div class="flex items-center justify-between mb-3">
       <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-wider">{{.S.zones_title}}</h2>
-      <span class="text-xs text-slate-500" id="last-update"></span>
     </div>
 
     {{template "zones_fragment" .}}
@@ -97,8 +142,11 @@
 
   <script>
     function _updateClock() {
+      const now = new Date();
       const el = document.getElementById('last-update');
-      if (el) el.textContent = new Date().toLocaleTimeString('{{.Lang}}', {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12: {{if eq .TimeFormat "12h"}}true{{else}}false{{end}}});
+      if (el) el.textContent = now.toLocaleTimeString('{{.Lang}}', {hour:'2-digit', minute:'2-digit', hour12: {{if eq .TimeFormat "12h"}}true{{else}}false{{end}}});
+      const dateEl = document.getElementById('last-update-date');
+      if (dateEl) dateEl.textContent = now.toLocaleDateString('{{.Lang}}', {weekday:'short', day:'numeric', month:'short'});
     }
     _updateClock();
     document.body.addEventListener('htmx:afterSettle', _updateClock);

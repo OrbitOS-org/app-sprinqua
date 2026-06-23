@@ -9,16 +9,20 @@ import (
 )
 
 const (
-	forecastURL = "https://api.open-meteo.com/v1/forecast?latitude=%g&longitude=%g&daily=precipitation_sum,temperature_2m_min&forecast_days=1&timezone=auto"
+	forecastURL  = "https://api.open-meteo.com/v1/forecast?latitude=%g&longitude=%g&daily=precipitation_sum,temperature_2m_max,temperature_2m_min,relative_humidity_2m_mean,wind_speed_10m_max&forecast_days=1&timezone=auto"
 	yesterdayURL = "https://api.open-meteo.com/v1/forecast?latitude=%g&longitude=%g&daily=precipitation_sum,temperature_2m_max,temperature_2m_min,relative_humidity_2m_mean,et0_fao_evapotranspiration&past_days=1&forecast_days=0&timezone=auto"
-	archiveURL  = "https://archive-api.open-meteo.com/v1/archive?latitude=%g&longitude=%g&start_date=%s&end_date=%s&daily=et0_fao_evapotranspiration&timezone=auto"
+	dailyRainURL = "https://api.open-meteo.com/v1/forecast?latitude=%g&longitude=%g&daily=precipitation_sum&past_days=%d&forecast_days=0&timezone=auto"
+	archiveURL   = "https://archive-api.open-meteo.com/v1/archive?latitude=%g&longitude=%g&start_date=%s&end_date=%s&daily=et0_fao_evapotranspiration&timezone=auto"
 )
 
-// Result holds today's forecast, used by the rain and frost skip checks.
+// Result holds today's forecast, used by the rain/frost skip checks and the Settings status card.
 type Result struct {
-	RainMM    float64
-	TempMinC  float64
-	FetchedAt time.Time
+	RainMM      float64
+	TempMaxC    float64
+	TempMinC    float64
+	HumidityPct float64
+	WindKmh     float64
+	FetchedAt   time.Time
 }
 
 // DailyData holds yesterday's weather actuals for adjustment calculations.
@@ -32,14 +36,21 @@ type DailyData struct {
 }
 
 var (
-	mu          sync.Mutex
-	todayCache  map[string]*Result
-	yesterCache map[string]*DailyData
+	mu            sync.Mutex
+	todayCache    map[string]*Result
+	yesterCache   map[string]*DailyData
+	dailyRainMeta map[string]dailyRainCacheEntry
 )
 
+type dailyRainCacheEntry struct {
+	rain      []DailyRain
+	fetchedAt time.Time
+}
+
 func init() {
-	todayCache  = make(map[string]*Result)
+	todayCache = make(map[string]*Result)
 	yesterCache = make(map[string]*DailyData)
+	dailyRainMeta = make(map[string]dailyRainCacheEntry)
 }
 
 // FetchToday returns today's precipitation forecast in mm for the given coordinates.
@@ -68,7 +79,10 @@ func FetchToday(lat, lon float64) (*Result, error) {
 	var body struct {
 		Daily struct {
 			PrecipitationSum []float64 `json:"precipitation_sum"`
+			TempMax          []float64 `json:"temperature_2m_max"`
 			TempMin          []float64 `json:"temperature_2m_min"`
+			HumidityMean     []float64 `json:"relative_humidity_2m_mean"`
+			WindMax          []float64 `json:"wind_speed_10m_max"`
 		} `json:"daily"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
@@ -79,9 +93,12 @@ func FetchToday(lat, lon float64) (*Result, error) {
 	}
 
 	r := &Result{
-		RainMM:    body.Daily.PrecipitationSum[0],
-		TempMinC:  safeIdx(body.Daily.TempMin, 0),
-		FetchedAt: time.Now(),
+		RainMM:      body.Daily.PrecipitationSum[0],
+		TempMaxC:    safeIdx(body.Daily.TempMax, 0),
+		TempMinC:    safeIdx(body.Daily.TempMin, 0),
+		HumidityPct: safeIdx(body.Daily.HumidityMean, 0),
+		WindKmh:     safeIdx(body.Daily.WindMax, 0),
+		FetchedAt:   time.Now(),
 	}
 	mu.Lock()
 	todayCache[key] = r
@@ -114,11 +131,11 @@ func FetchYesterday(lat, lon float64) (*DailyData, error) {
 
 	var body struct {
 		Daily struct {
-			PrecipitationSum      []float64 `json:"precipitation_sum"`
-			TempMax               []float64 `json:"temperature_2m_max"`
-			TempMin               []float64 `json:"temperature_2m_min"`
-			HumidityMean          []float64 `json:"relative_humidity_2m_mean"`
-			ETo                   []float64 `json:"et0_fao_evapotranspiration"`
+			PrecipitationSum []float64 `json:"precipitation_sum"`
+			TempMax          []float64 `json:"temperature_2m_max"`
+			TempMin          []float64 `json:"temperature_2m_min"`
+			HumidityMean     []float64 `json:"relative_humidity_2m_mean"`
+			ETo              []float64 `json:"et0_fao_evapotranspiration"`
 		} `json:"daily"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
@@ -142,6 +159,75 @@ func FetchYesterday(lat, lon float64) (*DailyData, error) {
 	yesterCache[key] = d
 	mu.Unlock()
 	return d, nil
+}
+
+// FetchDailyRain returns actual daily precipitation for the last days calendar days.
+// Results are cached for 1 hour.
+func FetchDailyRain(lat, lon float64, days int) ([]DailyRain, error) {
+	if days <= 0 {
+		return nil, fmt.Errorf("open-meteo daily rain: days must be positive")
+	}
+	key := fmt.Sprintf("%.4f,%.4f,%d", lat, lon, days)
+
+	mu.Lock()
+	if entry, ok := dailyRainMeta[key]; ok && time.Since(entry.fetchedAt) < time.Hour {
+		out := make([]DailyRain, len(entry.rain))
+		copy(out, entry.rain)
+		mu.Unlock()
+		return out, nil
+	}
+	mu.Unlock()
+
+	rain, err := fetchDailyRainUncached(lat, lon, days)
+	if err != nil {
+		return nil, err
+	}
+
+	mu.Lock()
+	dailyRainMeta[key] = dailyRainCacheEntry{rain: rain, fetchedAt: time.Now()}
+	mu.Unlock()
+	return rain, nil
+}
+
+func fetchDailyRainUncached(lat, lon float64, days int) ([]DailyRain, error) {
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Get(fmt.Sprintf(dailyRainURL, lat, lon, days))
+	if err != nil {
+		return nil, fmt.Errorf("open-meteo daily rain: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("open-meteo daily rain: status %d", resp.StatusCode)
+	}
+
+	var body struct {
+		Daily struct {
+			Time             []string  `json:"time"`
+			PrecipitationSum []float64 `json:"precipitation_sum"`
+		} `json:"daily"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		return nil, fmt.Errorf("open-meteo daily rain: decode: %w", err)
+	}
+	if len(body.Daily.PrecipitationSum) == 0 {
+		return nil, fmt.Errorf("open-meteo daily rain: no data")
+	}
+
+	loc := time.Local
+	rain := make([]DailyRain, 0, len(body.Daily.PrecipitationSum))
+	for i, mm := range body.Daily.PrecipitationSum {
+		var day time.Time
+		if i < len(body.Daily.Time) {
+			parsed, parseErr := time.ParseInLocation("2006-01-02", body.Daily.Time[i], loc)
+			if parseErr != nil {
+				return nil, fmt.Errorf("open-meteo daily rain: date: %w", parseErr)
+			}
+			day = parsed
+		}
+		rain = append(rain, DailyRain{Date: day, RainMM: mm})
+	}
+	return rain, nil
 }
 
 // FetchEToBaseline fetches 12 months of historical ETo from the Open-Meteo archive
