@@ -163,13 +163,13 @@
         <div class="bg-white rounded-2xl border border-slate-200 p-6 card-hover">
           <div class="feature-icon bg-blue-50 mb-4">📅</div>
           <h3 data-i18n="feat_sched_h3" class="font-semibold text-slate-900 mb-1.5">Flexible Scheduling</h3>
-          <p data-i18n="feat_sched_p" class="text-sm text-slate-500 leading-relaxed">Weekly schedules per zone with day-of-week selection, custom start time, and duration. Visual weekly overview chart.</p>
+          <p data-i18n="feat_sched_p" class="text-sm text-slate-500 leading-relaxed">Multi-zone programs run zones back-to-back from one start time, with an optional soak pause between them. Day-of-week selection and a visual weekly overview chart.</p>
         </div>
 
         <div class="bg-white rounded-2xl border border-slate-200 p-6 card-hover">
           <div class="feature-icon bg-sky-50 mb-4">🌦</div>
           <h3 data-i18n="feat_smart_h3" class="font-semibold text-slate-900 mb-1.5">Smart Watering</h3>
-          <p data-i18n="feat_smart_p" class="text-sm text-slate-500 leading-relaxed">Integrates with Open-Meteo (free, no API key) to skip irrigation when rain is forecast above your threshold.</p>
+          <p data-i18n="feat_smart_p" class="text-sm text-slate-500 leading-relaxed">Skip on rain or frost forecast, add a multi-day rain delay after heavy rainfall, or scale duration with a fixed %, monthly curve, Zimmerman ET, or FAO-56 Reference ETo — powered by free Open-Meteo data.</p>
         </div>
 
         <div class="bg-white rounded-2xl border border-slate-200 p-6 card-hover">
@@ -204,17 +204,17 @@
 
       <!-- Tab buttons -->
       <div class="flex justify-center gap-2 mb-10">
-        <button data-i18n="prev_tab_zones" onclick="demoTab('zones')" id="dtab-zones"
+        <button data-i18n="prev_tab_home" onclick="demoTab('zones')" id="dtab-zones"
           class="px-5 py-2 rounded-full text-sm font-semibold transition-all bg-slate-900 text-white shadow-sm">
-          💧 Zones
-        </button>
-        <button data-i18n="prev_tab_history" onclick="demoTab('history')" id="dtab-history"
-          class="px-5 py-2 rounded-full text-sm font-semibold transition-all bg-slate-100 text-slate-600 hover:bg-slate-200">
-          📋 History
+          🏠 Home
         </button>
         <button data-i18n="prev_tab_schedule" onclick="demoTab('schedules')" id="dtab-schedules"
           class="px-5 py-2 rounded-full text-sm font-semibold transition-all bg-slate-100 text-slate-600 hover:bg-slate-200">
           🗓 Schedule
+        </button>
+        <button data-i18n="prev_tab_history" onclick="demoTab('history')" id="dtab-history"
+          class="px-5 py-2 rounded-full text-sm font-semibold transition-all bg-slate-100 text-slate-600 hover:bg-slate-200">
+          📋 History
         </button>
         <button data-i18n="prev_tab_settings" onclick="demoTab('settings')" id="dtab-settings"
           class="px-5 py-2 rounded-full text-sm font-semibold transition-all bg-slate-100 text-slate-600 hover:bg-slate-200">
@@ -236,14 +236,49 @@
                 <div class="px-4 h-14 flex items-center justify-between">
                   <div class="flex items-center gap-2"><span class="text-lg">💧</span><span class="text-sm font-bold text-slate-800">Sprinqua</span></div>
                   <div class="flex items-center">
-                    <button onclick="demoTab('zones')" class="text-[11px] px-2 py-1 font-bold text-slate-800 cursor-pointer">Zones</button>
-                    <button onclick="demoTab('history')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">History</button>
+                    <button onclick="demoTab('zones')" class="text-[11px] px-2 py-1 font-bold text-slate-800 cursor-pointer">Home</button>
                     <button onclick="demoTab('schedules')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">Schedule</button>
+                    <button onclick="demoTab('history')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">History</button>
                     <button onclick="demoTab('settings')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">⚙</button>
                   </div>
                 </div>
               </header>
               <main class="flex-1 overflow-y-auto px-3 py-4">
+
+                <!-- Weather + clock card -->
+                <div class="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 mb-3">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2 min-w-0">
+                      <span class="text-2xl flex-shrink-0">☀️</span>
+                      <div class="min-w-0">
+                        <p class="text-base font-bold text-slate-800 leading-none">20–29°C</p>
+                        <p class="text-[10px] text-slate-400 mt-1">today</p>
+                      </div>
+                    </div>
+                    <div class="text-right flex-shrink-0">
+                      <p class="text-base font-bold text-slate-800 leading-none">14:32</p>
+                      <p class="text-[10px] text-slate-400 mt-1">Mon, 22 Jun</p>
+                    </div>
+                  </div>
+                  <div class="border-t border-slate-100 mt-2 pt-2 flex items-center gap-3 text-[10px] text-slate-500">
+                    <span class="flex items-center gap-1">💧 62%</span>
+                    <span class="flex items-center gap-1">💨 14 km/h</span>
+                    <span class="flex items-center gap-1">🌧️ 0.0 mm</span>
+                  </div>
+                </div>
+
+                <!-- Next run banner -->
+                <div class="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 mb-4">
+                  <span class="text-lg flex-shrink-0">📅</span>
+                  <div class="flex-1 min-w-0 flex items-center justify-between gap-2">
+                    <p class="text-[11px] font-semibold text-slate-800 min-w-0">Lawn · Today 18:00</p>
+                    <p class="text-[10px] text-slate-400 flex items-center gap-1 flex-shrink-0">
+                      <span class="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">⚡ ~×1.3</span>
+                      <span class="text-slate-300">·</span> 18 min
+                    </p>
+                  </div>
+                </div>
+
                 <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-3">Zones</p>
                 <div class="space-y-3">
 
@@ -347,33 +382,42 @@
                 <div class="px-4 h-14 flex items-center justify-between">
                   <div class="flex items-center gap-2"><span class="text-lg">💧</span><span class="text-sm font-bold text-slate-800">Sprinqua</span></div>
                   <div class="flex items-center">
-                    <button onclick="demoTab('zones')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">Zones</button>
-                    <button onclick="demoTab('history')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">History</button>
+                    <button onclick="demoTab('zones')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">Home</button>
                     <button onclick="demoTab('schedules')" class="text-[11px] px-2 py-1 font-bold text-slate-800 cursor-pointer">Schedule</button>
+                    <button onclick="demoTab('history')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">History</button>
                     <button onclick="demoTab('settings')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">⚙</button>
                   </div>
                 </div>
               </header>
               <main class="flex-1 overflow-y-auto px-3 py-4">
                 <div class="flex items-center justify-between mb-3">
-                  <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Schedules</p>
-                  <span class="text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg">+ New</span>
+                  <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Programs</p>
+                  <span class="text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg">+ New program</span>
                 </div>
 
-                <!-- Schedule 1 enabled -->
+                <!-- Program 1: multi-zone, manual adjustment -->
                 <div class="bg-white rounded-2xl border-2 border-emerald-400 shadow-sm shadow-emerald-100 p-4 mb-3">
                   <div class="flex items-start justify-between mb-2">
                     <div>
                       <div class="flex items-center gap-1.5">
                         <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 flex-shrink-0"></div>
-                        <span class="text-sm font-semibold text-slate-800">Morning Lawn <span class="font-normal text-slate-400">· Lawn</span></span>
+                        <span class="text-sm font-semibold text-slate-800">Morning Round</span>
                       </div>
-                      <p class="text-[10px] text-slate-400 mt-1 ml-4">Next: Mon 07:00</p>
+                      <p class="text-[10px] text-slate-400 mt-1 ml-4">Next run: Mon 07:00</p>
                     </div>
                     <div class="text-right flex-shrink-0">
                       <p class="text-sm font-semibold text-slate-700">07:00</p>
-                      <p class="text-[10px] text-slate-400">20 min</p>
+                      <p class="text-[10px] text-slate-400 flex items-center justify-end gap-1">
+                        <span class="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">⚡ ×1.2</span>
+                        <span class="text-slate-300">·</span> 24 min
+                      </p>
                     </div>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-1 mb-3 ml-4">
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full text-white" style="background:#10b981">Lawn · 20min</span>
+                    <span class="text-slate-300 text-[10px]">→</span>
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full text-white" style="background:#8b5cf6">Flower Bed · 4min</span>
+                    <span class="text-[9px] font-medium text-slate-400">⏸ 2min</span>
                   </div>
                   <div class="flex gap-1 mb-3 ml-4">
                     <span class="text-[10px] font-semibold w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 text-slate-400">Su</span>
@@ -384,27 +428,38 @@
                     <span class="text-[10px] font-semibold w-6 h-6 flex items-center justify-center rounded-full bg-emerald-600 text-white">Fr</span>
                     <span class="text-[10px] font-semibold w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 text-slate-400">Sa</span>
                   </div>
-                  <div class="flex gap-1.5 ml-4">
-                    <button class="text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600">Disable</button>
-                    <button class="text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600">Edit</button>
-                    <button class="text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-red-100 text-red-500">Delete</button>
+                  <div class="flex items-center justify-between gap-2 ml-4">
+                    <div class="flex items-center gap-2">
+                      <div class="w-9 h-5 bg-emerald-600 rounded-full flex-shrink-0 relative">
+                        <div class="absolute top-0.5 right-0.5 w-4 h-4 bg-white rounded-full shadow"></div>
+                      </div>
+                      <button class="text-[10px] font-semibold px-2 py-1 rounded-lg border border-slate-200 text-slate-600">Edit</button>
+                      <button class="text-[10px] font-semibold px-2 py-1 rounded-lg border border-red-100 text-red-500">Delete</button>
+                    </div>
+                    <button class="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-emerald-600 text-white whitespace-nowrap">▶ Run now</button>
                   </div>
                 </div>
 
-                <!-- Schedule 2 enabled -->
+                <!-- Program 2: single zone, ETo estimate -->
                 <div class="bg-white rounded-2xl border-2 border-emerald-400 shadow-sm shadow-emerald-100 p-4 mb-4">
                   <div class="flex items-start justify-between mb-2">
                     <div>
                       <div class="flex items-center gap-1.5">
                         <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 flex-shrink-0"></div>
-                        <span class="text-sm font-semibold text-slate-800">Night Drip <span class="font-normal text-slate-400">· Vegs</span></span>
+                        <span class="text-sm font-semibold text-slate-800">Night Drip</span>
                       </div>
-                      <p class="text-[10px] text-slate-400 mt-1 ml-4">Next: Tue 22:00</p>
+                      <p class="text-[10px] text-slate-400 mt-1 ml-4">Next run: Tue 22:00</p>
                     </div>
                     <div class="text-right flex-shrink-0">
                       <p class="text-sm font-semibold text-slate-700">22:00</p>
-                      <p class="text-[10px] text-slate-400">15 min</p>
+                      <p class="text-[10px] text-slate-400 flex items-center justify-end gap-1">
+                        <span class="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700" title="Estimated from yesterday's weather">⚡ ~×0.8</span>
+                        <span class="text-slate-300">·</span> 12 min
+                      </p>
                     </div>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-1 mb-3 ml-4">
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full text-white" style="background:#3b82f6">Vegetable Garden · 12min</span>
                   </div>
                   <div class="flex gap-1 mb-3 ml-4">
                     <span class="text-[10px] font-semibold w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 text-slate-400">Su</span>
@@ -415,10 +470,15 @@
                     <span class="text-[10px] font-semibold w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 text-slate-400">Fr</span>
                     <span class="text-[10px] font-semibold w-6 h-6 flex items-center justify-center rounded-full bg-emerald-600 text-white">Sa</span>
                   </div>
-                  <div class="flex gap-1.5 ml-4">
-                    <button class="text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600">Disable</button>
-                    <button class="text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600">Edit</button>
-                    <button class="text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-red-100 text-red-500">Delete</button>
+                  <div class="flex items-center justify-between gap-2 ml-4">
+                    <div class="flex items-center gap-2">
+                      <div class="w-9 h-5 bg-emerald-600 rounded-full flex-shrink-0 relative">
+                        <div class="absolute top-0.5 right-0.5 w-4 h-4 bg-white rounded-full shadow"></div>
+                      </div>
+                      <button class="text-[10px] font-semibold px-2 py-1 rounded-lg border border-slate-200 text-slate-600">Edit</button>
+                      <button class="text-[10px] font-semibold px-2 py-1 rounded-lg border border-red-100 text-red-500">Delete</button>
+                    </div>
+                    <button class="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-emerald-600 text-white whitespace-nowrap">▶ Run now</button>
                   </div>
                 </div>
 
@@ -468,9 +528,9 @@
                 <div class="px-4 h-14 flex items-center justify-between">
                   <div class="flex items-center gap-2"><span class="text-lg">💧</span><span class="text-sm font-bold text-slate-800">Sprinqua</span></div>
                   <div class="flex items-center">
-                    <button onclick="demoTab('zones')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">Zones</button>
-                    <button onclick="demoTab('history')" class="text-[11px] px-2 py-1 font-bold text-slate-800 cursor-pointer">History</button>
+                    <button onclick="demoTab('zones')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">Home</button>
                     <button onclick="demoTab('schedules')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">Schedule</button>
+                    <button onclick="demoTab('history')" class="text-[11px] px-2 py-1 font-bold text-slate-800 cursor-pointer">History</button>
                     <button onclick="demoTab('settings')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">⚙</button>
                   </div>
                 </div>
@@ -597,9 +657,9 @@
                 <div class="px-4 h-14 flex items-center justify-between">
                   <div class="flex items-center gap-2"><span class="text-lg">💧</span><span class="text-sm font-bold text-slate-800">Sprinqua</span></div>
                   <div class="flex items-center">
-                    <button onclick="demoTab('zones')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">Zones</button>
-                    <button onclick="demoTab('history')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">History</button>
+                    <button onclick="demoTab('zones')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">Home</button>
                     <button onclick="demoTab('schedules')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">Schedule</button>
+                    <button onclick="demoTab('history')" class="text-[11px] px-2 py-1 text-slate-400 cursor-pointer hover:text-slate-600">History</button>
                     <button onclick="demoTab('settings')" class="text-[11px] px-2 py-1 font-bold text-slate-800 cursor-pointer">⚙</button>
                   </div>
                 </div>
@@ -843,7 +903,7 @@
           </div>
           <img src="site_img/RAS-193.jpg" alt="BC Robotics 4-Channel Relay HAT" class="w-full h-40 object-cover">
           <div class="p-6">
-            <h3 class="font-semibold text-slate-900 mb-1">BC Robotics 4-Channel Relay HAT</h3>
+            <h3 class="font-semibold text-slate-900 mb-1">BC Robotics 4-Channel</h3>
             <p class="text-xs text-slate-400 font-mono mb-3">SKU: RAS-193</p>
             <p class="text-sm text-slate-500">4-Channel Relay HAT for Raspberry Pi from BC Robotics. Works well for compact outdoor layouts that need four separate watering zones.</p>
           </div>
@@ -1078,9 +1138,9 @@
         feat_zones_h3: "Zone Control",
         feat_zones_p: "Turn zones on/off manually, run a 5-minute pulse, or let schedules handle everything. Safety auto-off per zone.",
         feat_sched_h3: "Flexible Scheduling",
-        feat_sched_p: "Weekly schedules per zone with day-of-week selection, custom start time, and duration. Visual weekly overview chart.",
+        feat_sched_p: "Multi-zone programs run zones back-to-back from one start time, with an optional soak pause between them. Day-of-week selection and a visual weekly overview chart.",
         feat_smart_h3: "Smart Watering",
-        feat_smart_p: "Integrates with Open-Meteo (free, no API key) to skip irrigation when rain is forecast above your threshold.",
+        feat_smart_p: "Skip on rain or frost forecast, add a multi-day rain delay after heavy rainfall, or scale duration with a fixed %, monthly curve, Zimmerman ET, or FAO-56 Reference ETo — powered by free Open-Meteo data.",
         feat_hist_h3: "Activation History",
         feat_hist_p: "Full log of every run — manual, scheduled, MQTT, or skipped. 7-day stats, 24h timeline chart, and skipped-run visibility.",
         feat_mqtt_h3: "MQTT & Home Assistant",
@@ -1089,7 +1149,7 @@
         feat_i18n_p: "Full UI in English, Portuguese, Spanish, French, German, and Italian. Language auto-detected or set manually.",
         prev_h2: "Everything under control",
         prev_p: "A walkthrough of the Sprinqua app — from turning zones on and off, to scheduling automatic runs, tracking history, and tuning your setup. All from a clean mobile interface that runs entirely on your device.",
-        prev_tab_zones: "💧 Zones", prev_tab_history: "📋 History", prev_tab_schedule: "🗓 Schedule", prev_tab_settings: "⚙ Settings",
+        prev_tab_home: "🏠 Home", prev_tab_history: "📋 History", prev_tab_schedule: "🗓 Schedule", prev_tab_settings: "⚙ Settings",
         boards_h2: "Supported relay boards",
         boards_sub: "Works out of the box with popular relay HATs for Raspberry Pi. More boards are being added regularly.",
         boards_request_h: "Don't see your board?",
@@ -1132,9 +1192,9 @@
         feat_zones_h3: "Controlo de Zonas",
         feat_zones_p: "Liga/desliga zonas manualmente, corre um pulso de 5 minutos, ou deixa os horários tratar de tudo. Auto-desligamento de segurança por zona.",
         feat_sched_h3: "Agendamento Flexível",
-        feat_sched_p: "Horários semanais por zona com seleção de dias, hora de início e duração personalizáveis. Visão gráfica semanal.",
+        feat_sched_p: "Programas multi-zona correm as zonas em sequência a partir de uma única hora de início, com pausa opcional entre elas. Seleção de dias da semana e gráfico semanal visual.",
         feat_smart_h3: "Rega Inteligente",
-        feat_smart_p: "Integra com o Open-Meteo (gratuito, sem API key) para saltar a rega quando há previsão de chuva acima do teu limiar.",
+        feat_smart_p: "Salta com previsão de chuva ou geada, adiciona uma pausa de vários dias após chuva forte, ou ajusta a duração com % fixa, curva mensal, Zimmerman ET ou ETo de Referência FAO-56 — com dados gratuitos do Open-Meteo.",
         feat_hist_h3: "Histórico de Ativações",
         feat_hist_p: "Registo completo de cada execução — manual, agendada, MQTT ou ignorada. Estatísticas de 7 dias, gráfico de 24h e visibilidade das regas ignoradas.",
         feat_mqtt_h3: "MQTT e Home Assistant",
@@ -1143,7 +1203,7 @@
         feat_i18n_p: "Interface completa em Português, Inglês, Espanhol, Francês, Alemão e Italiano. Idioma detetado automaticamente ou configurado manualmente.",
         prev_h2: "Tudo sob controlo",
         prev_p: "Uma visão geral da app Sprinqua — desde ligar e desligar zonas, agendar regas automáticas, consultar o histórico e afinar a configuração. Tudo a partir de uma interface móvel que corre no teu dispositivo.",
-        prev_tab_zones: "💧 Zonas", prev_tab_history: "📋 Histórico", prev_tab_schedule: "🗓 Horários", prev_tab_settings: "⚙ Definições",
+        prev_tab_home: "🏠 Início", prev_tab_history: "📋 Histórico", prev_tab_schedule: "🗓 Horários", prev_tab_settings: "⚙ Definições",
         boards_h2: "Placas relay suportadas",
         boards_sub: "Funciona de imediato com as placas relay mais populares para Raspberry Pi. Mais placas são adicionadas regularmente.",
         boards_request_h: "Não vês a tua placa?",
@@ -1186,9 +1246,9 @@
         feat_zones_h3: "Control de Zonas",
         feat_zones_p: "Enciende/apaga zonas manualmente, ejecuta un pulso de 5 minutos, o deja que los horarios lo gestionen todo. Auto-apagado de seguridad por zona.",
         feat_sched_h3: "Programación Flexible",
-        feat_sched_p: "Horarios semanales por zona con selección de días, hora de inicio y duración. Vista gráfica semanal.",
+        feat_sched_p: "Los programas multi-zona ejecutan las zonas en secuencia desde una sola hora de inicio, con pausa opcional entre ellas. Selección de días de la semana y gráfico semanal visual.",
         feat_smart_h3: "Riego Inteligente",
-        feat_smart_p: "Se integra con Open-Meteo (gratuito, sin API key) para saltar el riego cuando se prevé lluvia por encima de tu umbral.",
+        feat_smart_p: "Salta con previsión de lluvia o helada, añade una pausa de varios días tras lluvia intensa, o ajusta la duración con % fijo, curva mensual, Zimmerman ET o ETo de Referencia FAO-56 — con datos gratuitos de Open-Meteo.",
         feat_hist_h3: "Historial de Activaciones",
         feat_hist_p: "Registro completo de cada ejecución — manual, programada, MQTT o saltada. Estadísticas de 7 días, gráfico de 24h y visibilidad de riegos saltados.",
         feat_mqtt_h3: "MQTT y Home Assistant",
@@ -1197,7 +1257,7 @@
         feat_i18n_p: "Interfaz completa en Español, Inglés, Portugués, Francés, Alemán e Italiano. Idioma detectado automáticamente o configurado manualmente.",
         prev_h2: "Todo bajo control",
         prev_p: "Un recorrido por la app Sprinqua — desde encender y apagar zonas, programar riegos automáticos, consultar el historial y ajustar la configuración. Todo desde una interfaz móvil que corre íntegramente en tu dispositivo.",
-        prev_tab_zones: "💧 Zonas", prev_tab_history: "📋 Historial", prev_tab_schedule: "🗓 Horarios", prev_tab_settings: "⚙ Ajustes",
+        prev_tab_home: "🏠 Inicio", prev_tab_history: "📋 Historial", prev_tab_schedule: "🗓 Horarios", prev_tab_settings: "⚙ Ajustes",
         boards_h2: "Placas relay soportadas",
         boards_sub: "Funciona de inmediato con las placas relay más populares para Raspberry Pi. Se añaden más placas regularmente.",
         boards_request_h: "¿No ves tu placa?",
@@ -1240,9 +1300,9 @@
         feat_zones_h3: "Contrôle des Zones",
         feat_zones_p: "Activez/désactivez les zones manuellement, lancez une impulsion de 5 minutes, ou laissez les plannings tout gérer. Arrêt automatique de sécurité par zone.",
         feat_sched_h3: "Planification Flexible",
-        feat_sched_p: "Plannings hebdomadaires par zone avec sélection des jours, heure de début et durée personnalisables. Vue graphique hebdomadaire.",
+        feat_sched_p: "Les programmes multi-zones enchaînent les zones depuis une seule heure de départ, avec une pause optionnelle entre elles. Sélection des jours et vue graphique hebdomadaire.",
         feat_smart_h3: "Arrosage Intelligent",
-        feat_smart_p: "S'intègre avec Open-Meteo (gratuit, sans clé API) pour sauter l'arrosage quand la pluie est prévue au-dessus de votre seuil.",
+        feat_smart_p: "Sautez en cas de prévision de pluie ou de gel, ajoutez une pause de plusieurs jours après une forte pluie, ou ajustez la durée avec un % fixe, une courbe mensuelle, Zimmerman ET ou l'ETo de référence FAO-56 — via les données gratuites d'Open-Meteo.",
         feat_hist_h3: "Historique des Activations",
         feat_hist_p: "Journal complet de chaque exécution — manuelle, planifiée, MQTT ou ignorée. Statistiques 7 jours, graphique 24h et visibilité des arrosages ignorés.",
         feat_mqtt_h3: "MQTT et Home Assistant",
@@ -1251,7 +1311,7 @@
         feat_i18n_p: "Interface complète en Français, Anglais, Portugais, Espagnol, Allemand et Italien. Langue détectée automatiquement ou configurée manuellement.",
         prev_h2: "Tout sous contrôle",
         prev_p: "Une présentation de l'app Sprinqua — de l'activation et désactivation des zones à la planification d'arrosages automatiques, en passant par l'historique et le réglage de votre configuration. Le tout depuis une interface mobile qui tourne entièrement sur votre appareil.",
-        prev_tab_zones: "💧 Zones", prev_tab_history: "📋 Historique", prev_tab_schedule: "🗓 Planning", prev_tab_settings: "⚙ Réglages",
+        prev_tab_home: "🏠 Accueil", prev_tab_history: "📋 Historique", prev_tab_schedule: "🗓 Planning", prev_tab_settings: "⚙ Réglages",
         boards_h2: "Cartes relais supportées",
         boards_sub: "Fonctionne immédiatement avec les cartes relais populaires pour Raspberry Pi. D'autres cartes sont ajoutées régulièrement.",
         boards_request_h: "Vous ne voyez pas votre carte ?",
@@ -1294,9 +1354,9 @@
         feat_zones_h3: "Zonensteuerung",
         feat_zones_p: "Zonen manuell ein-/ausschalten, einen 5-Minuten-Impuls ausführen oder Zeitpläne alles erledigen lassen. Sicherheits-Abschaltung pro Zone.",
         feat_sched_h3: "Flexible Zeitplanung",
-        feat_sched_p: "Wöchentliche Zeitpläne pro Zone mit Wochentagsauswahl, individueller Startzeit und Dauer. Grafische Wochensübersicht.",
+        feat_sched_p: "Multi-Zonen-Programme lassen Zonen nacheinander ab einer einzigen Startzeit laufen, mit optionaler Pause dazwischen. Wochentagsauswahl und grafische Wochenübersicht.",
         feat_smart_h3: "Intelligente Bewässerung",
-        feat_smart_p: "Integriert sich mit Open-Meteo (kostenlos, kein API-Schlüssel), um die Bewässerung zu überspringen, wenn Regen oberhalb Ihres Schwellenwerts vorhergesagt wird.",
+        feat_smart_p: "Überspringt bei Regen- oder Frostvorhersage, fügt nach starkem Regen eine mehrtägige Pause hinzu, oder skaliert die Dauer mit festem %, Monatskurve, Zimmerman ET oder FAO-56-Referenz-ETo — mit kostenlosen Open-Meteo-Daten.",
         feat_hist_h3: "Aktivierungshistorie",
         feat_hist_p: "Vollständiges Protokoll jeder Ausführung — manuell, geplant, MQTT oder übersprungen. 7-Tage-Statistiken, 24h-Zeitachse und Sichtbarkeit übersprungener Ausführungen.",
         feat_mqtt_h3: "MQTT und Home Assistant",
@@ -1305,7 +1365,7 @@
         feat_i18n_p: "Vollständige Benutzeroberfläche auf Deutsch, Englisch, Portugiesisch, Spanisch, Französisch und Italienisch. Sprache automatisch erkannt oder manuell eingestellt.",
         prev_h2: "Alles im Griff",
         prev_p: "Ein Überblick über die Sprinqua-App — vom Ein- und Ausschalten von Zonen über die Planung automatischer Läufe bis hin zur Verlaufsverfolgung und Feinabstimmung. Alles über eine saubere mobile Oberfläche, die vollständig auf Ihrem Gerät läuft.",
-        prev_tab_zones: "💧 Zonen", prev_tab_history: "📋 Verlauf", prev_tab_schedule: "🗓 Zeitplan", prev_tab_settings: "⚙ Einstellungen",
+        prev_tab_home: "🏠 Start", prev_tab_history: "📋 Verlauf", prev_tab_schedule: "🗓 Zeitplan", prev_tab_settings: "⚙ Einstellungen",
         boards_h2: "Unterstützte Relais-Boards",
         boards_sub: "Funktioniert sofort mit beliebten Relais-HATs für Raspberry Pi. Weitere Boards werden regelmäßig hinzugefügt.",
         boards_request_h: "Ihr Board nicht dabei?",
@@ -1348,9 +1408,9 @@
         feat_zones_h3: "Controllo Zone",
         feat_zones_p: "Accendi/spegni zone manualmente, esegui un impulso da 5 minuti, o lascia che i programmi gestiscano tutto. Spegnimento automatico di sicurezza per zona.",
         feat_sched_h3: "Programmazione Flessibile",
-        feat_sched_p: "Programmi settimanali per zona con selezione dei giorni, orario di inizio e durata personalizzabili. Visualizzazione grafica settimanale.",
+        feat_sched_p: "I programmi multi-zona fanno scorrere le zone in sequenza da un unico orario di avvio, con una pausa opzionale tra loro. Selezione dei giorni e grafico settimanale visivo.",
         feat_smart_h3: "Irrigazione Intelligente",
-        feat_smart_p: "Si integra con Open-Meteo (gratuito, nessuna API key) per saltare l'irrigazione quando è prevista pioggia sopra la tua soglia.",
+        feat_smart_p: "Salta con previsione di pioggia o gelo, aggiunge una pausa di più giorni dopo piogge intense, oppure scala la durata con % fissa, curva mensile, Zimmerman ET o ETo di Riferimento FAO-56 — con dati gratuiti di Open-Meteo.",
         feat_hist_h3: "Cronologia Attivazioni",
         feat_hist_p: "Registro completo di ogni esecuzione — manuale, programmata, MQTT o saltata. Statistiche 7 giorni, grafico 24h e visibilità delle irrigazioni saltate.",
         feat_mqtt_h3: "MQTT e Home Assistant",
@@ -1359,7 +1419,7 @@
         feat_i18n_p: "Interfaccia completa in Italiano, Inglese, Portoghese, Spagnolo, Francese e Tedesco. Lingua rilevata automaticamente o configurata manualmente.",
         prev_h2: "Tutto sotto controllo",
         prev_p: "Una panoramica dell'app Sprinqua — dall'accensione e spegnimento delle zone alla programmazione di irrigazioni automatiche, dal monitoraggio della cronologia alla regolazione della configurazione. Tutto da un'interfaccia mobile che gira interamente sul tuo dispositivo.",
-        prev_tab_zones: "💧 Zone", prev_tab_history: "📋 Cronologia", prev_tab_schedule: "🗓 Programmi", prev_tab_settings: "⚙ Impostazioni",
+        prev_tab_home: "🏠 Home", prev_tab_history: "📋 Cronologia", prev_tab_schedule: "🗓 Programmi", prev_tab_settings: "⚙ Impostazioni",
         boards_h2: "Schede relay supportate",
         boards_sub: "Funziona immediatamente con le schede relay più diffuse per Raspberry Pi. Nuove schede vengono aggiunte regolarmente.",
         boards_request_h: "Non vedi la tua scheda?",
