@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/OrbitOS-org/sdk-go/v26/client"
 	"github.com/OrbitOS-org/sdk-go/v26/logger"
 	"sprinqua/internal/board"
 	"sprinqua/internal/config"
@@ -61,10 +60,12 @@ type entry struct {
 	cancel    context.CancelFunc
 }
 
-// Engine manages all zones and their relay GPIO state.
+// Engine manages all zones and their relay state, via whichever RelayDriver
+// the board's ChannelManager opens (GPIO or I2C).
 type Engine struct {
 	mu            sync.Mutex
-	gpio          *client.GpioManager
+	chMgr         *board.ChannelManager
+	driver        board.RelayDriver // opened in Init()
 	board         *board.Board
 	zones         map[int]*entry
 	exclusive     bool // when true, activating a zone turns off all others first
@@ -83,9 +84,9 @@ func (e *Engine) SetHistory(h *history.Store) {
 	e.mu.Unlock()
 }
 
-func New(gpio *client.GpioManager, b *board.Board, zones []config.Zone, exclusive bool) *Engine {
+func New(chMgr *board.ChannelManager, b *board.Board, zones []config.Zone, exclusive bool) *Engine {
 	e := &Engine{
-		gpio:      gpio,
+		chMgr:     chMgr,
 		board:     b,
 		zones:     make(map[int]*entry),
 		exclusive: exclusive,
@@ -99,41 +100,27 @@ func New(gpio *client.GpioManager, b *board.Board, zones []config.Zone, exclusiv
 	return e
 }
 
-// Init sets all relay pins as OUTPUT and ensures they start OFF.
+// Init opens the board's relay driver, then sets all relays to OFF.
 func (e *Engine) Init() {
+	drv, err := e.chMgr.Open(e.board)
+	if err != nil {
+		logger.Errorf(logTag, "open relay driver for board %q: %v", e.board.ID, err)
+	} else {
+		e.driver = drv
+	}
 	for _, en := range e.zones {
-		pin := e.board.PinByChannel(en.cfg.Channel)
-		if pin == nil {
-			logger.Warnf(logTag, "zone %d: no pin for channel %d", en.cfg.ID, en.cfg.Channel)
-			continue
-		}
-		// relayWrite → SetLevel → SetValue in the runtime opens the GPIO line via
-		// gpiocdev.RequestLine(chip, offset, AsOutput(val)) with the correct initial
-		// level in one atomic call. Calling SetDirection first always initialises to
-		// LOW (AsOutput(0)), which would briefly activate relays on ActiveLow boards.
-		if err := e.relayWrite(pin, false); err != nil {
+		if err := e.setChannel(en.cfg.Channel, false); err != nil {
 			logger.Warnf(logTag, "zone %d init OFF: %v", en.cfg.ID, err)
 		}
 	}
 }
 
-// relayWrite drives the relay pin, honouring board ActiveLow logic.
-func (e *Engine) relayWrite(pin *client.GpioPin, on bool) error {
-	var level client.GpioLevel
-	if e.board.ActiveLow {
-		if on {
-			level = client.GPIO_LEVEL_LOW
-		} else {
-			level = client.GPIO_LEVEL_HIGH
-		}
-	} else {
-		if on {
-			level = client.GPIO_LEVEL_HIGH
-		} else {
-			level = client.GPIO_LEVEL_LOW
-		}
+// setChannel switches one relay channel on or off via the board's driver.
+func (e *Engine) setChannel(channel int, on bool) error {
+	if e.driver == nil {
+		return fmt.Errorf("relay driver not ready")
 	}
-	return e.gpio.SetLevel(pin, level)
+	return e.driver.SetChannel(channel, on)
 }
 
 // turnOffLocked turns off a zone without acquiring the mutex (must be held by caller).
@@ -146,8 +133,7 @@ func (e *Engine) turnOffLocked(id int) error {
 		en.cancel()
 		en.cancel = nil
 	}
-	pin := e.board.PinByChannel(en.cfg.Channel)
-	if err := e.relayWrite(pin, false); err != nil {
+	if err := e.setChannel(en.cfg.Channel, false); err != nil {
 		return fmt.Errorf("zone %d OFF: %w", id, err)
 	}
 	en.active = false
@@ -188,8 +174,7 @@ func (e *Engine) TurnOn(id int) error {
 		en.cancel = nil
 	}
 
-	pin := e.board.PinByChannel(en.cfg.Channel)
-	if err := e.relayWrite(pin, true); err != nil {
+	if err := e.setChannel(en.cfg.Channel, true); err != nil {
 		return fmt.Errorf("zone %d ON: %w", id, err)
 	}
 	en.active = true
@@ -238,19 +223,15 @@ func (e *Engine) Pulse(id, secs int) error {
 	return nil
 }
 
-// TestChannel pulses a raw GPIO channel (used during the setup wizard).
-// It bypasses the zone map and drives the pin directly.
+// TestChannel pulses a raw relay channel (used during the setup wizard).
+// It bypasses the zone map and drives the channel directly.
 func (e *Engine) TestChannel(channel, secs int) error {
-	pin := e.board.PinByChannel(channel)
-	if pin == nil {
-		return fmt.Errorf("channel %d not found in board", channel)
-	}
-	if err := e.relayWrite(pin, true); err != nil {
+	if err := e.setChannel(channel, true); err != nil {
 		return err
 	}
 	go func() {
 		time.Sleep(time.Duration(secs) * time.Second)
-		_ = e.relayWrite(pin, false)
+		_ = e.setChannel(channel, false)
 	}()
 	logger.Infof(logTag, "test channel %d for %ds", channel, secs)
 	return nil
@@ -286,10 +267,8 @@ func (e *Engine) SetZones(zones []config.Zone) {
 			continue
 		}
 		e.zones[id] = &entry{cfg: z}
-		if pin := e.board.PinByChannel(z.Channel); pin != nil {
-			if err := e.relayWrite(pin, false); err != nil {
-				logger.Warnf(logTag, "zone %d init OFF: %v", id, err)
-			}
+		if err := e.setChannel(z.Channel, false); err != nil {
+			logger.Warnf(logTag, "zone %d init OFF: %v", id, err)
 		}
 	}
 }

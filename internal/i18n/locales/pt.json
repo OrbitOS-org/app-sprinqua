@@ -20,6 +20,7 @@
   "step3_title": "Testa os relés",
   "step3_subtitle": "Liga cada relé por 3 segundos para confirmar a ligação física.",
   "step3_btn_test": "▶ 3s",
+  "step3_btn_cancel": "← Cancelar configuração",
   "test_activated": "✓ Relé CH%d ativado por 3s",
   "step4_title": "Preferências & MQTT",
   "step4_subtitle": "Opcional. Integra com o teu broker MQTT para controlo via Home Assistant.",

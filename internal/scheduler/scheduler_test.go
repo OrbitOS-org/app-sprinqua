@@ -31,7 +31,10 @@ func newTestEngine(t *testing.T, zones []config.Zone) *zone.Engine {
 		t.Fatal("waveshare-3ch board not found in registry")
 	}
 	gpio := client.NewGpioManager(&fakeGpioClient{}, context.Background())
-	return zone.New(gpio, b, zones, false)
+	chMgr := board.NewChannelManager(gpio, nil)
+	eng := zone.New(chMgr, b, zones, false)
+	eng.Init()
+	return eng
 }
 
 func waitUntilNotRunning(t *testing.T, s *Scheduler, id int, timeout time.Duration) {

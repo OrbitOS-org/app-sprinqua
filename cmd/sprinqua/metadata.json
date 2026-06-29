@@ -1,11 +1,12 @@
 {
   "package_id": "com.sprinqua.sprinqua",
   "name": "Sprinqua",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Smart irrigation controller for Raspberry Pi relay boards",
   "permissions": [
     "AppHubService/*",
     "GpioService/*",
+    "I2CService/*",
     "SystemService/*"
   ]
 }

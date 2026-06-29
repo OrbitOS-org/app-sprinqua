@@ -20,6 +20,7 @@
   "step3_title": "Test relays",
   "step3_subtitle": "Activate each relay for 3 seconds to confirm the physical connection.",
   "step3_btn_test": "▶ 3s",
+  "step3_btn_cancel": "← Cancel setup",
   "test_activated": "✓ Relay CH%d active for 3s",
   "step4_title": "Preferences & MQTT",
   "step4_subtitle": "Optional. Connect to your MQTT broker for Home Assistant integration.",

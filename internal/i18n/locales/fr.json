@@ -20,6 +20,7 @@
   "step3_title": "Tester les relais",
   "step3_subtitle": "Activez chaque relais pendant 3 secondes pour confirmer la connexion physique.",
   "step3_btn_test": "▶ 3s",
+  "step3_btn_cancel": "← Annuler la configuration",
   "test_activated": "✓ Relais CH%d actif pendant 3s",
   "step4_title": "Préférences et MQTT",
   "step4_subtitle": "Facultatif. Connectez-vous à votre broker MQTT pour l’intégration avec Home Assistant.",

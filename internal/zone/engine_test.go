@@ -32,7 +32,9 @@ func TestExclusiveModeTurnOnClosesPreviousZoneHistory(t *testing.T) {
 		t.Fatal("waveshare-3ch board not found in registry")
 	}
 	gpio := client.NewGpioManager(&fakeGpioClient{}, context.Background())
-	eng := New(gpio, b, zones, true) // exclusive mode, matches the reported bug
+	chMgr := board.NewChannelManager(gpio, nil)
+	eng := New(chMgr, b, zones, true) // exclusive mode, matches the reported bug
+	eng.Init()
 
 	cfg := &config.Config{Zones: zones}
 	hist, err := history.New(t.TempDir(), cfg)

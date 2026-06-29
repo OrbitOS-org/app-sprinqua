@@ -34,7 +34,7 @@ var funcMap = template.FuncMap{
 		}
 		return a / b
 	},
-	"sub": func(a, b int) int { return a - b },
+	"sub":   func(a, b int) int { return a - b },
 	"slice": func(vals ...int) []int { return vals },
 	"hasDay": func(days []int, d int) bool {
 		for _, day := range days {
@@ -83,7 +83,7 @@ type Server struct {
 	engine         *zone.Engine
 	sched          *scheduler.Scheduler
 	hist           *history.Store
-	gpio           *client.GpioManager
+	chMgr          *board.ChannelManager
 	appHub         *client.AppHubManager
 	mqttClient     *mqtt.Client
 	hwModel        string // hardware model string from Gravity RT, used to verify Raspberry Pi
@@ -112,17 +112,17 @@ func New(
 		return nil, err
 	}
 	srv := &Server{
-		dataDir:     dataDir,
-		cfg:         cfg,
-		board:       b,
-		engine:      eng,
-		sched:       sched,
-		hist:        hist,
-		gpio:        c.GpioManager,
-		appHub:      c.AppHubManager,
-		hwModel:     hwModel,
-		version:     version,
-		tmpl:        tmpl,
+		dataDir: dataDir,
+		cfg:     cfg,
+		board:   b,
+		engine:  eng,
+		sched:   sched,
+		hist:    hist,
+		chMgr:   board.NewChannelManager(c.GpioManager, c.I2CManager),
+		appHub:  c.AppHubManager,
+		hwModel: hwModel,
+		version: version,
+		tmpl:    tmpl,
 	}
 
 	mc := mqtt.New()

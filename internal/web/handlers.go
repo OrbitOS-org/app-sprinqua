@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/OrbitOS-org/sdk-go/v26/client"
 	"github.com/OrbitOS-org/sdk-go/v26/logger"
 	"sprinqua/internal/adjustment"
 	"sprinqua/internal/board"
@@ -386,23 +385,20 @@ func (s *Server) handleSetupReset(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/setup/wizard", http.StatusFound)
 }
 
-// initBoardPins configures every channel on the board as OUTPUT and ensures
-// all relays start in the OFF state. Called once when a board is selected.
+// initBoardPins opens the board's relay driver and ensures every channel
+// starts OFF. Called once when a board is selected.
 func (s *Server) initBoardPins(b *board.Board) {
-	offLevel := client.GPIO_LEVEL_LOW
-	if b.ActiveLow {
-		offLevel = client.GPIO_LEVEL_HIGH
+	drv, err := s.chMgr.Open(b)
+	if err != nil {
+		logger.Warnf(logTag, "open relay driver for board %q: %v", b.ID, err)
+		return
 	}
-	for _, ch := range b.Pins {
-		_ = s.gpio.SetLevel(ch.Pin, offLevel)
-		if err := s.gpio.SetDirection(ch.Pin, client.GPIO_DIR_OUT); err != nil {
-			logger.Warnf(logTag, "init ch%d direction: %v", ch.Number, err)
-		}
-		if err := s.gpio.SetLevel(ch.Pin, offLevel); err != nil {
-			logger.Warnf(logTag, "init ch%d off: %v", ch.Number, err)
+	for ch := 1; ch <= b.Channels; ch++ {
+		if err := drv.SetChannel(ch, false); err != nil {
+			logger.Warnf(logTag, "init ch%d off: %v", ch, err)
 		}
 	}
-	logger.Infof(logTag, "board %q: %d pins initialized as OUTPUT/OFF", b.ID, len(b.Pins))
+	logger.Infof(logTag, "board %q: %d channels initialized OFF", b.ID, b.Channels)
 }
 
 func (s *Server) handleSetupChannels(w http.ResponseWriter, r *http.Request) {
@@ -419,10 +415,10 @@ func (s *Server) handleSetupChannels(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, `<p class="text-[11px] font-mono text-slate-400 w-full mb-1">SKU: %s</p>`, b.SKU)
 	}
 	fmt.Fprintf(w, `<span class="text-xs text-slate-400">%s</span>`, strs["step1_channels_label"])
-	for i, ch := range b.Pins {
-		color := zoneColors[i%len(zoneColors)]
+	for ch := 1; ch <= b.Channels; ch++ {
+		color := zoneColors[(ch-1)%len(zoneColors)]
 		fmt.Fprintf(w, ` <span class="text-xs font-semibold text-white px-2.5 py-1 rounded-full" style="background-color: %s">CH%d</span>`,
-			color, ch.Number)
+			color, ch)
 	}
 }
 
@@ -500,18 +496,16 @@ func (s *Server) handleSetupTest(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "board not configured", http.StatusBadRequest)
 		return
 	}
-	pin := b.PinByChannel(ch)
-	if pin == nil {
+	if ch > b.Channels {
 		http.Error(w, "channel not in board", http.StatusBadRequest)
 		return
 	}
-
-	onLevel := client.GPIO_LEVEL_HIGH
-	offLevel := client.GPIO_LEVEL_LOW
-	if b.ActiveLow {
-		onLevel = client.GPIO_LEVEL_LOW
-		offLevel = client.GPIO_LEVEL_HIGH
+	drv, err := s.chMgr.Open(b)
+	if err != nil {
+		http.Error(w, "relay driver unavailable", http.StatusInternalServerError)
+		return
 	}
+	setLevel := func(on bool) error { return drv.SetChannel(ch, on) }
 
 	// Allow only one relay test at a time — reject if already active.
 	s.testMu.Lock()
@@ -524,8 +518,8 @@ func (s *Server) handleSetupTest(w http.ResponseWriter, r *http.Request) {
 	s.testCancel = cancel
 	s.testMu.Unlock()
 
-	_ = s.gpio.SetLevel(pin, offLevel)
-	if err := s.gpio.SetLevel(pin, onLevel); err != nil {
+	_ = setLevel(false)
+	if err := setLevel(true); err != nil {
 		logger.Warnf(logTag, "test ch%d ON: %v", ch, err)
 	}
 	go func() {
@@ -536,13 +530,13 @@ func (s *Server) handleSetupTest(w http.ResponseWriter, r *http.Request) {
 		}()
 		select {
 		case <-time.After(3 * time.Second):
-			if err := s.gpio.SetLevel(pin, offLevel); err != nil {
+			if err := setLevel(false); err != nil {
 				logger.Warnf(logTag, "test ch%d OFF: %v", ch, err)
 			} else {
 				logger.Infof(logTag, "test ch%d OFF", ch)
 			}
 		case <-ctx.Done():
-			_ = s.gpio.SetLevel(pin, offLevel)
+			_ = setLevel(false)
 		}
 	}()
 
@@ -585,7 +579,7 @@ func (s *Server) handleSetupStep3(w http.ResponseWriter, r *http.Request) {
 	b := board.Find(s.cfg.Board)
 	if b != nil {
 		s.board = b
-		eng := zone.New(s.gpio, b, s.cfg.Zones, s.cfg.IsExclusiveMode())
+		eng := zone.New(s.chMgr, b, s.cfg.Zones, s.cfg.IsExclusiveMode())
 		eng.Init()
 		eng.SetHistory(s.hist)
 		s.engine = eng
@@ -1450,7 +1444,7 @@ func (s *Server) handleImportConfig(w http.ResponseWriter, r *http.Request) {
 	// Re-initialize board and engine with imported zones.
 	if b := board.Find(s.cfg.Board); b != nil {
 		s.board = b
-		eng := zone.New(s.gpio, b, s.cfg.Zones, s.cfg.IsExclusiveMode())
+		eng := zone.New(s.chMgr, b, s.cfg.Zones, s.cfg.IsExclusiveMode())
 		eng.Init()
 		eng.SetHistory(s.hist)
 		s.engine = eng

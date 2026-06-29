@@ -69,14 +69,21 @@ func main() {
 	if cfg.SetupDone {
 		b = board.Find(cfg.Board)
 		if b == nil {
-			logger.Fatalf(logTag, "configured board %q not found in registry", cfg.Board)
-			os.Exit(1)
+			// Never fatal-exit here: under the OrbitOS launcher (or any
+			// supervisor that auto-restarts on crash) this becomes an
+			// infinite crash loop with no way to reach the web UI to fix
+			// it. Degrade instead — serve with no engine, same as the
+			// "setup not done" state below, so the user can still open
+			// Settings and re-run the wizard.
+			logger.Errorf(logTag, "configured board %q not found in registry — re-run the setup wizard from Settings", cfg.Board)
+		} else {
+			chMgr := board.NewChannelManager(c.GpioManager, c.I2CManager)
+			eng = zone.New(chMgr, b, cfg.Zones, cfg.IsExclusiveMode())
+			eng.Init()
+			eng.SetHistory(hist)
+			sched.SetEngine(eng)
+			logger.Infof(logTag, "zone engine ready (%d zones, board: %s)", len(cfg.Zones), b.Name)
 		}
-		eng = zone.New(c.GpioManager, b, cfg.Zones, cfg.IsExclusiveMode())
-		eng.Init()
-		eng.SetHistory(hist)
-		sched.SetEngine(eng)
-		logger.Infof(logTag, "zone engine ready (%d zones, board: %s)", len(cfg.Zones), b.Name)
 	} else {
 		logger.Infof(logTag, "setup not complete — serving wizard")
 	}

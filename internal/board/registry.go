@@ -8,6 +8,14 @@ type Channel struct {
 	Pin    *client.GpioPin
 }
 
+// Kind identifies how a board's relays are driven.
+type Kind string
+
+const (
+	KindGPIO Kind = "" // zero value — existing boards stay unchanged
+	KindI2C  Kind = "i2c"
+)
+
 // Board describes a supported relay board.
 type Board struct {
 	ID          string
@@ -15,8 +23,17 @@ type Board struct {
 	Description string
 	SKU         string
 	Channels    int
-	ActiveLow   bool // LOW signal activates the relay
-	Pins        []Channel
+	Kind        Kind      // KindGPIO (default) or KindI2C
+	ActiveLow   bool      // GPIO boards only — LOW signal activates the relay
+	Pins        []Channel // GPIO boards only
+
+	// I2C boards only (Kind == KindI2C). I2CNewDriver is board-specific —
+	// different I2C boards can use completely different wire protocols (and
+	// their own default address, not user-configurable), so each one
+	// provides its own constructor (see driver_*.go) instead of the Engine
+	// assuming a single shared implementation.
+	I2CBus       uint32
+	I2CNewDriver func(bus *client.I2CBus) RelayDriver
 }
 
 // PinByChannel returns the GPIO pin for the given 1-based channel number.
@@ -111,6 +128,26 @@ var All = []*Board{
 			{Number: 3, Pin: &client.GpioPin{Name: "GPIO27"}},
 			{Number: 4, Pin: &client.GpioPin{Name: "GPIO22"}},
 		},
+	},
+	{
+		// Up to 4 EP-0099s can be stacked on the same bus at consecutive
+		// addresses (0x10-0x13) for up to 16 channels total — see
+		// driver_ep0099.go for the channel→address mapping. Registered with
+		// the max channel count; users with fewer boards disable the extra
+		// zones in Settings after setup (zones 5-16 won't respond otherwise).
+		//
+		// ID kept as "52pi-4ch-i2c" (from when this only covered 4 channels)
+		// even though it now covers 4-16 — config.json persists this ID, and
+		// changing it strands anyone who already completed setup (main.go
+		// can no longer find their board on the next boot).
+		ID:           "52pi-ep-0099-i2c",
+		Name:         "52Pi EP-0099 4/8/12/16-Channel",
+		Description:  "4-channel I2C relay board, stackable up to 4 boards (16 channels). If you have fewer than 4 stacked, disable the extra zones in Configure zones.",
+		SKU:          "EP-0099",
+		Channels:     16,
+		Kind:         KindI2C,
+		I2CBus:       1,
+		I2CNewDriver: NewEP0099Driver,
 	},
 	{
 		ID:          "waveshare-pi0-6ch",
