@@ -1,0 +1,4 @@
+# The HTML is the web interface and the website of the app. GitHub shows the
+# repository by its main language, so it is left out of that count: the app is
+# written in Go.
+*.html linguist-detectable=false
